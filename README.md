@@ -73,6 +73,15 @@ raw values remain available as `agent.temperature_raw` and
 `agent.temperature_by_options_raw`, and a `RuntimeWarning` names every clamped
 bucket at load.
 
+> **PyPI note:** the wheel currently on PyPI (`0.1.0`) predates the clamp
+> above - it applies fitted temperatures unclamped and emits no
+> `RuntimeWarning`. Until `0.1.1` is published, install from source for the
+> documented behaviour:
+>
+> ```bash
+> pip install 'laya-coreml @ git+https://github.com/mizorewww/laya-coreml'
+> ```
+
 The ANE bundle has a **96-token total limit**, including question, options and
 state. Longer requests raise a capacity error. Use
 `aac6fef/laya-multilingual-coreml` for the general-purpose 1024-token model.
