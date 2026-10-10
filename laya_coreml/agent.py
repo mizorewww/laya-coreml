@@ -5,7 +5,7 @@ import json
 import numpy as np
 
 from .artifacts import package_for_coreml
-from .common import read_temperatures
+from .common import option_layout, read_temperatures
 from .hub import DEFAULT_MODEL, resolve_checkpoint
 from .prompt import PromptMixin
 from .result import ResultMixin
@@ -45,6 +45,11 @@ class Agent(PromptMixin, ResultMixin):
                 "allow_unvalidated_gpu=True is for reproducing the failure only."
             )
         self.cfg = json.loads((self.model_dir / "rl_agent_config.json").read_text())
+        layout = option_layout(self.cfg)
+        if layout != self.manifest.get("option_layout", "sequential"):
+            raise ValueError(
+                "Checkpoint option_layout does not match the exported graph; re-export it"
+            )
         (
             self.temperature,
             self.temperature_by_options,

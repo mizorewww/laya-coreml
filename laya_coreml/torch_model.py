@@ -12,6 +12,8 @@ from safetensors.torch import load_file
 from torch import nn
 from torch.nn import functional as F
 
+from .common import option_layout
+
 
 def attention(q, k, v, mask, implementation):
     if implementation == "sdpa":
@@ -57,17 +59,23 @@ class Attention(nn.Module):
         self.register_buffer("cos", angles.cos()[None, None], persistent=False)
         self.register_buffer("sin", angles.sin()[None, None], persistent=False)
 
-    def rotate(self, value):
+    def rotate(self, value, position_ids=None):
         a, b = value.chunk(2, dim=-1)
         length = value.shape[-2]
-        c, s = self.cos[:, :, :length], self.sin[:, :, :length]
+        if position_ids is None:
+            c, s = self.cos[:, :, :length], self.sin[:, :, :length]
+        else:
+            c = self.cos[0, 0][position_ids.long()][:, None]
+            s = self.sin[0, 0][position_ids.long()][:, None]
         return torch.cat((a * c - b * s, b * c + a * s), dim=-1)
 
-    def forward(self, x, mask):
+    def forward(self, x, mask, position_ids=None):
         b, n, _ = x.shape
         qkv = self.Wqkv(x).reshape(b, n, 3, self.heads, self.dim)
         q, k, v = (qkv[:, :, i].transpose(1, 2) for i in range(3))
-        value = attention(self.rotate(q), self.rotate(k), v, mask, self.implementation)
+        value = attention(
+            self.rotate(q, position_ids), self.rotate(k, position_ids), v, mask, self.implementation
+        )
         return self.Wo(value.transpose(1, 2).reshape(b, n, -1))
 
 
@@ -98,8 +106,8 @@ class Layer(nn.Module):
         self.mlp_norm = norm()
         self.mlp = MLP(cfg)
 
-    def forward(self, x, mask):
-        x = x + self.attn(self.attn_norm(x), mask)
+    def forward(self, x, mask, position_ids=None):
+        x = x + self.attn(self.attn_norm(x), mask, position_ids)
         return x + self.mlp(self.mlp_norm(x))
 
 
@@ -131,7 +139,7 @@ class Encoder(nn.Module):
             "positions", torch.arange(max_length, dtype=torch.int32), persistent=False
         )
 
-    def forward(self, ids, valid):
+    def forward(self, ids, valid, position_ids=None, option_ids=None):
         x = self.embeddings(ids)
         full = valid[:, None, None, :]
         length = ids.shape[1]
@@ -141,8 +149,19 @@ class Encoder(nn.Module):
             torch.logical_or(window[None, None], torch.logical_not(valid[:, None, :, None])),
             full,
         )
+        if option_ids is not None:
+            other = torch.logical_and(option_ids[:, :, None] > 0, option_ids[:, None, :] > 0)
+            other = torch.logical_and(other, option_ids[:, :, None] != option_ids[:, None, :])
+            full = torch.logical_and(full, torch.logical_not(other[:, None]))
+            distance = (position_ids[:, :, None] - position_ids[:, None, :]).abs()
+            local = torch.logical_and(
+                full,
+                torch.logical_or(
+                    distance <= self.window // 2, torch.logical_not(valid[:, :, None])
+                )[:, None],
+            )
         for layer in self.layers:
-            x = layer(x, full if layer.kind == "full_attention" else local)
+            x = layer(x, full if layer.kind == "full_attention" else local, position_ids)
         return self.final_norm(x)
 
 
@@ -195,6 +214,7 @@ class DecisionModel(nn.Module):
         if cfg.get("model_type") != "modernbert" or cfg.get("hidden_activation", "gelu") != "gelu":
             raise ValueError("Only GELU ModernBERT checkpoints are supported")
         d = cfg["hidden_size"]
+        self.parallel = option_layout(agent_cfg) == "parallel"
         self.encoder = Encoder(cfg, max_length)
         self.head = Head(d, agent_cfg["head_layers"])
         self.type_emb = nn.Embedding(3, d)
@@ -206,9 +226,25 @@ class DecisionModel(nn.Module):
         )
         self.register_buffer("temperature", torch.ones(3))
 
-    def forward(self, input_ids, attention_mask, marker_pos, marker_mask, qtype):
+    def forward(
+        self,
+        input_ids,
+        attention_mask,
+        marker_pos,
+        marker_mask,
+        qtype,
+        position_ids=None,
+        option_ids=None,
+    ):
+        if self.parallel and (position_ids is None or option_ids is None):
+            raise ValueError("Parallel checkpoints require position_ids and option_ids")
+        if not self.parallel and (position_ids is not None or option_ids is not None):
+            raise ValueError("Sequential checkpoints do not accept parallel layout inputs")
         valid, selected = attention_mask.bool(), marker_mask.bool()
-        h = self.encoder(input_ids, valid) + self.type_emb(qtype)[:, None, :]
+        h = (
+            self.encoder(input_ids, valid, position_ids, option_ids)
+            + self.type_emb(qtype)[:, None, :]
+        )
         h = self.head(h, valid[:, None, None, :])
         markers = torch.gather(h, 1, marker_pos.long()[:, :, None].expand(-1, -1, h.shape[-1]))
         logits = self.scorer(markers).squeeze(-1).float()

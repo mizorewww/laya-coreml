@@ -13,7 +13,7 @@ from laya_coreml.result import ResultMixin
 from laya_coreml.tokenizer import Tokenizer
 
 from .artifacts import package_for_coreml, verify_files, verify_research_manifest
-from .common import read_temperatures
+from .common import option_layout, read_temperatures
 
 
 class ANEAgent(PromptMixin, ResultMixin):
@@ -41,6 +41,10 @@ class ANEAgent(PromptMixin, ResultMixin):
             host_weights = self.source / "model.safetensors"
         self.model_dir = self.source
         self.cfg = json.loads((self.source / "rl_agent_config.json").read_text())
+        if option_layout(self.cfg) != "sequential":
+            raise ValueError(
+                "Legacy ANE bundles use sequential RoPE; export this checkpoint with laya_coreml.convert"
+            )
         (
             self.temperature,
             self.temperature_by_options,

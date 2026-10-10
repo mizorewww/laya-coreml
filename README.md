@@ -177,3 +177,92 @@ Apache-2.0. Independent port of [Laya](https://github.com/NandhaKishorM/laya), b
 Convai Innovations and contributors, building on the [MLX sibling project](https://github.com/mizorewww/laya-mlx).
 Not an official Convai Innovations or Apple release. See
 [NOTICE](https://github.com/mizorewww/laya-coreml/blob/main/NOTICE).
+
+
+## Upstream v0.4.1 runtime port (v0.3.0)
+
+This release ports the runtime features at upstream `1adc59f` to Core ML. Model
+weights remain separate downloads. The runtime still needs no PyTorch, Transformers,
+or MLX; PyTorch is used only for conversion and reference testing.
+
+```python
+import laya_coreml as laya
+
+router = laya.Router(max_loaded=2)
+result = router.predict(state, questions, min_confidence=0.7)
+router.register("local", "./models/my-coreml-bundle", description="Custom classifier")
+result = router.predict(state, questions, model="local")
+router.unload("local")
+router.unregister("local")
+```
+
+`Router()` uses the published English, multilingual and typed-decisions **Core ML**
+bundles. It defaults to multilingual when the language is undecided. Use
+`Router(default="english")` to choose English as the fallback. `route()` inspects a
+request without loading weights; explicit `model`, `task`, and `lang` override
+inference from the input. Automatic typed-workflow detection is opt-in through
+`auto_task_detection=True`. Language detection includes the upstream acronym,
+capitalization and mixed-script fixes.
+
+Pass `models={"custom": "./bundle"}` at construction, or use `register`, `registered`,
+`attach`, `preload`, and `unload`. Sources are local Core ML bundles or Hub repository
+IDs. `compute_units`, `revision`, and `local_files_only` are passed to bundle loading.
+An attached ANE bundle uses its usual CPU+NE default when `compute_units` is omitted.
+Resident-model access and status reads remain available during a cold load; duplicate
+loads share construction. Replacing/unregistering a source prevents an old in-flight
+build from becoming resident. Unload drops router references without invalidating
+agents held by callers or ongoing predictions. Core ML manages native caches; the
+router collects unreachable Python objects and never deletes cached model files.
+
+`Agent`, `ANEAgent`, and `Router` accept `min_confidence=0.7` or a bucket mapping such
+as `{"choice:2": 0.8, "choice:3-5": 0.7, "default": 0.6}`. Answers gain `abstention`,
+`abstention_threshold`, and, when below threshold, `low_confidence`. The gate preserves
+the answer and does not automatically call a fallback. Shipped confidence values
+still require held-out calibration for any correctness-probability interpretation.
+
+```python
+result = laya.predict_tournament(router, state, questions, group_size=16)
+# Optional external embedder: maps a list of strings to an (N, D) numeric array.
+result = laya.predict_shortlist(router, state, questions, embed_fn, k=16)
+```
+
+Tournament elimination handles large choice sets without an embedding model.
+`result["tournament"]` records finalists, original counts, and rounds. Probabilities
+and usage describe the **final pass only**. Choose `group_size` / shortlist `k` within
+the bundle's exported option capacity. `shortlist_choice` is also available for
+caller-managed ranking; the Core ML graph does not expose an encoder embedder.
+
+Email helpers (`laya_coreml.email.clean_email_body`, `email_state`, `email_questions`)
+include English, Portuguese, Spanish and French cleanup, including the French device
+footer fix. Cleaning is explicit and never silently applied to ordinary input.
+
+### Parallel option layout
+
+The converter supports checkpoints trained with `"option_layout": "parallel"`:
+shared option positions, option-isolating encoder masks, local attention measured in
+position IDs, and the position-free decision head. Preparation, fixed/enumerated
+shapes, conversion and runtime use matching `position_ids` and `option_ids` inputs.
+Missing configuration means `sequential`; unknown layouts and configuration/export
+mismatches raise an error. **Do not switch an existing bundle to parallel by editing
+its JSON**: the graph and trained weights must match the layout.
+
+FP32 and FP16 exports are tested on CPU and CPU+GPU, with varying input lengths and
+option order, against upstream v0.4.1. Legacy ANE exports have sequential RoPE baked
+into the graph and reject parallel configurations; use the general `convert` path
+for parallel checkpoints. Existing ANE packages receive the shared prompt, gating,
+routing and decision-helper features without requiring reconversion. No new parallel
+pretrained weights or parallel ANE acceleration claim is made by this release.
+
+Validation covers all 24 permutations of four options, a sequential sensitivity
+control, pinned upstream numerical parity, real Core ML export/load execution,
+registry races, routing and helper semantics. CI runs portable tests on Linux and
+actual Core ML tests on macOS. Reproduce with:
+
+```bash
+uv sync --extra convert --extra dev --extra demo --extra publish --extra reference
+# Check out upstream 1adc59f into .upstream for reference parity.
+uv run --no-sync pytest -q
+```
+
+Existing published bundles are rechecked against the original FP32 golden fixture;
+see [the release validation report](benchmarks/results/upstream-v041-validation.json).

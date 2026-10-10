@@ -2,7 +2,14 @@
 
 import json
 
-from .common import QTYPES, build_sequence, render_options, resolve_noul_labels, serialize_state
+from .common import (
+    QTYPES,
+    build_sequence,
+    option_layout,
+    render_options,
+    resolve_noul_labels,
+    serialize_state,
+)
 
 
 class PromptMixin:
@@ -84,10 +91,11 @@ class PromptMixin:
         state_ids = self.tok(
             serialize_state(state).replace(self.tok.mask_token, " "), add_special_tokens=False
         )["input_ids"]
+        parallel = option_layout(self.cfg) == "parallel"
         items, internal = [], []
         for qid, definition in questions.items():
             q = self._question(qid, definition)
-            ids, markers, stats, state_stats = build_sequence(
+            ids, markers, stats, state_stats, *layout = build_sequence(
                 self.tok,
                 state,
                 q,
@@ -97,6 +105,7 @@ class PromptMixin:
                 state_ids=state_ids,
                 return_stats=True,
                 return_truncation_stats=True,
+                return_layout=parallel,
             )
             if len(markers) != len(render_options(q)):
                 raise ValueError(f"Question {qid!r} has too many options for the token budget")
@@ -109,5 +118,7 @@ class PromptMixin:
                     "state_stats": state_stats,
                 }
             )
+            if parallel:
+                items[-1]["layout"] = layout[0]
             internal.append(q)
         return items, internal

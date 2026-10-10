@@ -3,11 +3,14 @@
 import numpy as np
 
 from .common import answer_confidence, collapsed_options, confidence_from_probs, temp_bucket
+from .confidence import apply_confidence_gate, check_min_confidence
 from .inputs import collate_items
 
 
 class ResultMixin:
-    def system_one(self, state, questions):
+    def system_one(self, state, questions, *, min_confidence=None):
+        if min_confidence is not None:
+            min_confidence = check_min_confidence(min_confidence)
         items, internal = self.prepare(state, questions)
         answers = {}
         question_ids = list(questions)
@@ -70,10 +73,12 @@ class ResultMixin:
         collapsed = collapsed_options(question_ids, items)
         if collapsed:
             usage["options"] = collapsed
-        return {
+        result = {
             "model": "laya-rl-agent",
             "answers": answers,
             "usage": usage,
         }
+        apply_confidence_gate([result], min_confidence)
+        return result
 
     predict = system_one

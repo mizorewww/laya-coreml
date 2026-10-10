@@ -116,3 +116,40 @@ ANE FP16 L96 通过 **59/59**，最大校准概率偏差 0.002925；W8 同一子
 代码采用 Apache-2.0。原始 [Laya](https://github.com/NandhaKishorM/laya) 模型由 Convai Innovations
 及贡献者发布；本项目基于 [laya-mlx](https://github.com/mizorewww/laya-mlx) 完成独立 Core ML 移植。
 这不是 Convai Innovations 或 Apple 官方发行版，归属见 [NOTICE](NOTICE)。
+
+
+## v0.3.0：同步上游 v0.4.1 运行时功能
+
+新增 `Router`，自动选择已发布的英文、多语言和 typed-decisions Core ML 模型。
+语言无法确定时默认使用 multilingual；可用 `Router(default="english")` 改为英文回退。
+支持 `models=`、`register`、`unregister`、`registered`、`attach`、`preload` 和 `unload`。
+冷加载不会阻塞其他已驻留模型和状态查询；并发加载共享构建，替换来源后旧构建不会重新驻留。
+卸载只释放 Router 持有的引用，不会使调用者或执行中请求持有的模型失效。
+
+```python
+import laya_coreml as laya
+
+router = laya.Router(max_loaded=2)
+result = router.predict(state, questions, min_confidence=0.7)
+result = laya.predict_tournament(router, state, questions, group_size=16)
+```
+
+`Agent`、`ANEAgent`、`Router` 均支持标量或按选项数量分桶的 `min_confidence`。
+门控增加弃权标记，保留原答案，不会自动调用其他模型。
+`predict_tournament` 无需 embedding，通过分组淘汰处理大候选集；返回的概率和 usage
+仅描述最终一轮，`tournament` 记录候选和轮次。也可使用外部 embedding 函数配合
+`predict_shortlist` / `shortlist_choice`。分组大小应不超过导出包的选项容量。
+
+同步了大写缩写、强调大写及混合文字的语言检测修复，并提供显式邮件清理工具
+`laya_coreml.email`，包括法语设备页脚修复。推理仍不依赖 PyTorch、Transformers 或 MLX。
+
+通用 Core ML 转换器新增 `option_layout="parallel"` 支持，覆盖共享位置、选项隔离掩码、
+动态长度、准备输入及实际推理。FP32/FP16 导出在 CPU 和 CPU+GPU 上验证，并与上游
+v0.4.1 对齐。配置缺省仍为 sequential；不能通过修改旧模型 JSON 将其变成 parallel。
+旧 ANE 图固化了顺序位置编码，会明确拒绝 parallel 配置；parallel checkpoint 使用通用
+Core ML 转换路径。旧 ANE 模型可直接使用新增路由、门控及决策辅助功能。
+
+CI 同时运行 Linux 和 macOS 测试。排列测试覆盖四个选项的全部 24 种顺序，包含顺序布局
+敏感性对照、上游数值对齐和真正的 Core ML 转换/加载测试。
+真实模型复验见 [原始报告](benchmarks/results/upstream-v041-validation.json)，
+详细 API 与复现步骤见 [英文 README](README.md#upstream-v041-runtime-port-v030)。

@@ -89,6 +89,11 @@ def convert(
         "marker_mask": torch.ones((batch_size, max_options), dtype=torch.int32),
         "qtype": torch.zeros((batch_size,), dtype=torch.int32),
     }
+    if model.parallel:
+        inputs["position_ids"] = torch.arange(length, dtype=torch.int32)[None].expand(
+            batch_size, -1
+        )
+        inputs["option_ids"] = torch.zeros((batch_size, length), dtype=torch.int32)
     print(
         f"Tracing {precision} B={batch_size}, L={length}, K={max_options}, flexible={flexible}",
         flush=True,
@@ -118,7 +123,9 @@ def convert(
         ct.TensorType(
             name=name,
             dtype=np.int32,
-            shape=sequence_shape if name in ("input_ids", "attention_mask") else tuple(value.shape),
+            shape=sequence_shape
+            if name in ("input_ids", "attention_mask", "position_ids", "option_ids")
+            else tuple(value.shape),
         )
         for name, value in inputs.items()
     ]
@@ -152,6 +159,7 @@ def convert(
         manifest = {
             "format": "laya-coreml",
             "format_version": 1,
+            "option_layout": "parallel" if model.parallel else "sequential",
             "source": str(source),
             "revision": revision,
             "source_weights_sha256": sha256(source_path / "model.safetensors"),

@@ -25,3 +25,11 @@ Selected prompt validation, noul labels, truncation diagnostics and answer-confi
 fixes synchronized through upstream 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c,
 via laya-mlx ca5940aa9286dbbdfaacbecbdb7b337295ad36a2.
 The architecture and model weights remain based on the original pinned revision.
+
+Runtime routing, lifecycle synchronization, custom checkpoint registration,
+confidence gating, tournament/shortlist decisions, language detection and email
+cleaning synchronized through upstream 1adc59f7e371deb601fcfa18a14e25db238addcc
+(v0.4.1), via laya-mlx 9f00d592fcf843753e6d3edd2eab63ec2b44f3c9.
+Parallel option layout adapted for the export-only PyTorch graph and Core ML
+input signatures. Existing sequential Core ML and ANE bundles remain supported;
+parallel checkpoints require a matching newly converted general Core ML graph.

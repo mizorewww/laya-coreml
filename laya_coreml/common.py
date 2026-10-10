@@ -130,6 +130,42 @@ def build_prefix(tok, q: Dict, head_max_len: int = 192, option_order=None, *, re
     return ids, markers
 
 
+def parallel_layout(markers: List[int], head_len: int, length: int) -> Dict[str, List[int]]:
+    """Position ids and option ids that make the encoder blind to option order.
+
+    In the sequential layout option `s` sits at positions after option `s-1`, and every option
+    attends to every other, so where an option is listed changes its embedding: the slot logits
+    of five identical options spread by 3.59 (`tests/test_option_order.py`). Here every option
+    starts at the same position, the first one after the instruction's [SEP], and the head's
+    closing [SEP] and the state continue after the longest option. Together with
+    `parallel_option_masks`, which stops an option from attending to another, reordering the
+    options only reorders the marker embeddings.
+
+    `option_ids` is 0 for shared tokens (instruction, closing [SEP], state, padding) and `s + 1`
+    for the tokens of slot `s`, which runs from its [MASK] up to the next marker or, for the last
+    slot, up to the [SEP] at `head_len - 1`.
+    """
+    if not markers:
+        return {"position_ids": list(range(length)), "option_ids": [0] * length}
+    start = markers[0]
+    spans = list(zip(markers, markers[1:] + [head_len - 1]))
+    position_ids, option_ids = list(range(start)), [0] * start
+    for s, (a, b) in enumerate(spans):
+        position_ids += range(start, start + b - a)
+        option_ids += [s + 1] * (b - a)
+    after = start + max(b - a for a, b in spans)
+    position_ids += range(after, after + length - len(position_ids))
+    option_ids += [0] * (length - len(option_ids))
+    return {"position_ids": position_ids, "option_ids": option_ids}
+
+
+def uses_parallel_layout(cfg):
+    layout = cfg.get("option_layout", "sequential")
+    if layout not in ("sequential", "parallel"):
+        raise ValueError(f"Unsupported option_layout: {layout!r}")
+    return layout == "parallel"
+
+
 def finish_sequence(tok, prefix, markers, state_ids, max_len, truncate_left=False):
     """Append the same state slice in cached and uncached preparation."""
     room = max(0, max_len - len(prefix) - 1)
@@ -158,6 +194,7 @@ def build_sequence(
     state_ids=None,
     return_stats=False,
     return_truncation_stats=False,
+    return_layout=False,
 ):
     """Build the upstream sequence; optional diagnostics describe the actual token budgets."""
     prefix, markers, stats = build_prefix(tok, q, head_max_len, option_order, return_stats=True)
@@ -165,6 +202,7 @@ def build_sequence(
         state_ids = tok(
             serialize_state(state).replace(tok.mask_token, " "), add_special_tokens=False
         )["input_ids"]
+    original_markers = list(markers)
     ids, markers, state_stats = finish_sequence(
         tok, prefix, markers, state_ids, max_len, truncate_left
     )
@@ -173,6 +211,9 @@ def build_sequence(
         result += (stats,)
     if return_truncation_stats:
         result += (state_stats,)
+    if return_layout:
+        layout = parallel_layout(original_markers, len(prefix), max(len(prefix), len(ids)))
+        result += ({k: v[: len(ids)] for k, v in layout.items()},)
     return result
 
 
@@ -284,3 +325,10 @@ def read_temperatures(cfg: Dict):
             stacklevel=2,
         )
     return temperature, by_options, raw, raw_by_options
+
+
+def option_layout(cfg):
+    layout = cfg.get("option_layout", "sequential")
+    if layout not in ("sequential", "parallel"):
+        raise ValueError(f"Unknown option_layout: {layout!r}")
+    return layout

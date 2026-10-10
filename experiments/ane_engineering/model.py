@@ -128,6 +128,10 @@ class ConvBody(nn.Module):
 
     def __init__(self, source, length):
         super().__init__()
+        if source.parallel:
+            raise ValueError(
+                "Legacy ANE export requires sequential layout; use laya_coreml.convert for parallel checkpoints"
+            )
         self.embedding_norm = ChannelNorm(source.encoder.embeddings.norm)
         self.layers = nn.ModuleList(
             [ConvEncoderLayer(layer, length) for layer in source.encoder.layers]
