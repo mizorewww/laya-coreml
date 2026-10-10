@@ -1,0 +1,684 @@
+[
+  {
+    "environment": {
+      "created_at": "2026-10-10T02:13:55.986295+00:00",
+      "chip": "Apple M3 Max",
+      "memory_bytes": 137438953472,
+      "os": "macOS-27.2-arm64-arm-64bit",
+      "python": "3.12.13",
+      "packages": {
+        "coremltools": "9.0",
+        "numpy": "2.1.3",
+        "torch": "2.7.0",
+        "tokenizers": "0.23.2"
+      },
+      "source_sha256": "670488c6def16f213d4ccc5e4c2824a4f30110f47f4ee53e880f332c38b23294"
+    },
+    "repository": "aac6fef/laya-coreml",
+    "format": "laya-coreml",
+    "shape": {
+      "batch_size": 1,
+      "max_length": 512,
+      "min_length": 16,
+      "default_length": 128,
+      "max_options": 32,
+      "flexible": true,
+      "mode": "enumerated",
+      "lengths": [
+        16,
+        32,
+        64,
+        96,
+        128,
+        192,
+        256,
+        384,
+        512
+      ]
+    },
+    "compute_units": "cpu_gpu",
+    "load_seconds": 4.412760791999972,
+    "source_weights_sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+    "package_sha256": "e697cb5b3cfe76738690afd1be1ce0673e5edf3d93cf8fe04dface306c8f575e",
+    "reference_sha256": "8f91c3be65e1fe77408e4809b1debecc44f2c3d84fea2a4f9cc88d150033d51e",
+    "bundle_files_verified": true,
+    "cases": [
+      {
+        "name": "email",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00036248411817829673,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "en",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0005794522064193064,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "zh",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0033076258324740704,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "de",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0014419040982275866,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "fr",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0019683208807920183,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "es",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.003062455574691314,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "hi",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0022815510838266606,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ja",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0012594393266427695,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ru",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0010868776635046817,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "empty_state",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.000519360980224759,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "long",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0003138214746256085,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "conversation",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0001506211279515418,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "mask_literals",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00043326147227729095,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "many_questions",
+        "questions": 20,
+        "argmax_agreements": 20,
+        "probability_max_abs_error": 0.00036248590012000204,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "structured",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0006351234277632567,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "twenty_options",
+        "questions": 1,
+        "argmax_agreements": 1,
+        "probability_max_abs_error": 4.869884462355145e-08,
+        "action_probability_max_abs_error": 0.0
+      }
+    ],
+    "passed": true,
+    "questions": 63,
+    "argmax_agreements": 63,
+    "probability_max_abs_error": 0.0033076258324740704,
+    "action_probability_max_abs_error": 0.0,
+    "stability": {
+      "calls": 100,
+      "identical_rounded_results": true
+    },
+    "gate": {
+      "all_argmax_agree": true,
+      "max_probability_error": 0.02,
+      "max_action_probability_error": 0.02,
+      "finite": true,
+      "stable": true
+    }
+  },
+  {
+    "environment": {
+      "created_at": "2026-10-10T02:06:03.495289+00:00",
+      "chip": "Apple M3 Max",
+      "memory_bytes": 137438953472,
+      "os": "macOS-27.2-arm64-arm-64bit",
+      "python": "3.12.13",
+      "packages": {
+        "coremltools": "9.0",
+        "numpy": "2.1.3",
+        "torch": "2.7.0",
+        "tokenizers": "0.23.2"
+      },
+      "source_sha256": "670488c6def16f213d4ccc5e4c2824a4f30110f47f4ee53e880f332c38b23294"
+    },
+    "repository": "aac6fef/laya-multilingual-coreml",
+    "format": "laya-coreml",
+    "shape": {
+      "batch_size": 1,
+      "max_length": 1024,
+      "min_length": 16,
+      "default_length": 128,
+      "max_options": 32,
+      "flexible": true,
+      "mode": "enumerated",
+      "lengths": [
+        16,
+        32,
+        64,
+        96,
+        128,
+        192,
+        256,
+        384,
+        512,
+        768,
+        1024
+      ]
+    },
+    "compute_units": "cpu_gpu",
+    "load_seconds": 3.066474707999987,
+    "source_weights_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+    "package_sha256": "64e84856a07620d2085f91ce9a0d1a48ccbe9dc824d1a34bed8c104bff1db383",
+    "reference_sha256": "8f91c3be65e1fe77408e4809b1debecc44f2c3d84fea2a4f9cc88d150033d51e",
+    "bundle_files_verified": true,
+    "cases": [
+      {
+        "name": "email",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00017555557478511619,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "en",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0003270161033079866,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "zh",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0004650094824689699,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "de",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00035520339176342564,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "fr",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0010337280305405677,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "es",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0003375064743120493,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "hi",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00018448471402932043,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ja",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 8.419404114012874e-05,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ru",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0015776376887714216,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "empty_state",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00039023162459189686,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "long",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0011252203252182236,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "conversation",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0004810536801295173,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "mask_literals",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0013082645248925218,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "many_questions",
+        "questions": 20,
+        "argmax_agreements": 20,
+        "probability_max_abs_error": 0.00017547025189122711,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "structured",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00013953810866951244,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "twenty_options",
+        "questions": 1,
+        "argmax_agreements": 1,
+        "probability_max_abs_error": 3.3154213453512327e-06,
+        "action_probability_max_abs_error": 0.0
+      }
+    ],
+    "passed": true,
+    "questions": 63,
+    "argmax_agreements": 63,
+    "probability_max_abs_error": 0.0015776376887714216,
+    "action_probability_max_abs_error": 0.0,
+    "stability": {
+      "calls": 100,
+      "identical_rounded_results": true
+    },
+    "gate": {
+      "all_argmax_agree": true,
+      "max_probability_error": 0.02,
+      "max_action_probability_error": 0.02,
+      "finite": true,
+      "stable": true
+    }
+  },
+  {
+    "environment": {
+      "created_at": "2026-10-10T02:06:48.033306+00:00",
+      "chip": "Apple M3 Max",
+      "memory_bytes": 137438953472,
+      "os": "macOS-27.2-arm64-arm-64bit",
+      "python": "3.12.13",
+      "packages": {
+        "coremltools": "9.0",
+        "numpy": "2.1.3",
+        "torch": "2.7.0",
+        "tokenizers": "0.23.2"
+      },
+      "source_sha256": "670488c6def16f213d4ccc5e4c2824a4f30110f47f4ee53e880f332c38b23294"
+    },
+    "repository": "aac6fef/laya-typed-decisions-coreml",
+    "format": "laya-coreml",
+    "shape": {
+      "batch_size": 1,
+      "max_length": 1024,
+      "min_length": 16,
+      "default_length": 128,
+      "max_options": 32,
+      "flexible": true,
+      "mode": "enumerated",
+      "lengths": [
+        16,
+        32,
+        64,
+        96,
+        128,
+        192,
+        256,
+        384,
+        512,
+        768,
+        1024
+      ]
+    },
+    "compute_units": "cpu_gpu",
+    "load_seconds": 3.03821333399992,
+    "source_weights_sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+    "package_sha256": "517a8071290a29c2f1e19b38356fdc5c59dfdc801711a92606de6bba67596c85",
+    "reference_sha256": "8f91c3be65e1fe77408e4809b1debecc44f2c3d84fea2a4f9cc88d150033d51e",
+    "bundle_files_verified": true,
+    "cases": [
+      {
+        "name": "email",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0004383384901024412,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "en",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0005584718161167346,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "zh",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0012654801311268171,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "de",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0010281030008345848,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "fr",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0005992100373963805,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "es",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0006989959579828398,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "hi",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0027266347551877512,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ja",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0011093933803167921,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ru",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.000542210239660168,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "empty_state",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00042186348091610704,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "long",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.000501763944237843,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "conversation",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0002725624251749825,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "mask_literals",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0004923618393770646,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "many_questions",
+        "questions": 20,
+        "argmax_agreements": 20,
+        "probability_max_abs_error": 0.00043842444596942087,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "structured",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0006054809527535343,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "twenty_options",
+        "questions": 1,
+        "argmax_agreements": 1,
+        "probability_max_abs_error": 7.134581690990995e-05,
+        "action_probability_max_abs_error": 0.0
+      }
+    ],
+    "passed": true,
+    "questions": 63,
+    "argmax_agreements": 63,
+    "probability_max_abs_error": 0.0027266347551877512,
+    "action_probability_max_abs_error": 0.0,
+    "stability": {
+      "calls": 100,
+      "identical_rounded_results": true
+    },
+    "gate": {
+      "all_argmax_agree": true,
+      "max_probability_error": 0.02,
+      "max_action_probability_error": 0.02,
+      "finite": true,
+      "stable": true
+    }
+  },
+  {
+    "environment": {
+      "created_at": "2026-10-10T02:13:30.271038+00:00",
+      "chip": "Apple M3 Max",
+      "memory_bytes": 137438953472,
+      "os": "macOS-27.2-arm64-arm-64bit",
+      "python": "3.12.13",
+      "packages": {
+        "coremltools": "9.0",
+        "numpy": "2.1.3",
+        "torch": "2.7.0",
+        "tokenizers": "0.23.2"
+      },
+      "source_sha256": "670488c6def16f213d4ccc5e4c2824a4f30110f47f4ee53e880f332c38b23294"
+    },
+    "repository": "aac6fef/laya-multilingual-coreml-ane",
+    "format": "laya-coreml-ane",
+    "shape": {
+      "batch_size": 1,
+      "max_length": 96,
+      "min_length": 96,
+      "max_options": 32,
+      "flexible": false,
+      "lengths": null
+    },
+    "compute_units": "cpu_ne",
+    "load_seconds": 22.94052233399998,
+    "source_weights_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+    "package_sha256": "53ba84d9b002997599dafc89cde611e6edac450572c63c4896e7b9f082b53651",
+    "reference_sha256": "8f91c3be65e1fe77408e4809b1debecc44f2c3d84fea2a4f9cc88d150033d51e",
+    "bundle_files_verified": true,
+    "cases": [
+      {
+        "name": "email",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0002779567730952781,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "en",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0003270161033079866,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "zh",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0003505306841716446,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "de",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.00045834381210041464,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "fr",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.001640766152765205,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "es",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0029248531754093587,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "hi",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0005735619059983321,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ja",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0004844246714378331,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "ru",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0009792158013824936,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "empty_state",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0016108414481667,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "long",
+        "skipped": "outside bundle capacity"
+      },
+      {
+        "name": "conversation",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0004194883099918334,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "mask_literals",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.001467615478298795,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "many_questions",
+        "questions": 20,
+        "argmax_agreements": 20,
+        "probability_max_abs_error": 0.00027793535504919836,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "structured",
+        "questions": 3,
+        "argmax_agreements": 3,
+        "probability_max_abs_error": 0.0016406952452901885,
+        "action_probability_max_abs_error": 0.0
+      },
+      {
+        "name": "twenty_options",
+        "skipped": "outside bundle capacity"
+      }
+    ],
+    "passed": true,
+    "questions": 59,
+    "argmax_agreements": 59,
+    "probability_max_abs_error": 0.0029248531754093587,
+    "action_probability_max_abs_error": 0.0,
+    "stability": {
+      "calls": 100,
+      "identical_rounded_results": true
+    },
+    "gate": {
+      "all_argmax_agree": true,
+      "max_probability_error": 0.02,
+      "max_action_probability_error": 0.02,
+      "finite": true,
+      "stable": true
+    }
+  }
+]

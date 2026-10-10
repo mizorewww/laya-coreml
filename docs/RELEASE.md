@@ -143,3 +143,28 @@ and `uv.lock`. The Release workflow runs the reusable CI checks, verifies all
 three versions against the tag, builds and validates wheel/sdist, publishes to
 PyPI using the repository secret `PYPI_API_TOKEN`, and creates a GitHub release
 with the same distributions. CI failure prevents publishing.
+
+
+## v0.3.0 runtime feature release
+
+Upstream runtime baseline: `1adc59f7e371deb601fcfa18a14e25db238addcc` (v0.4.1).
+The published model bundles retain their original weights and sequential graphs.
+New runtime APIs and parallel graph conversion ship in the Python package; no model
+Hub upload is required for this release.
+
+```bash
+uv sync --extra convert --extra dev --extra demo --extra publish --extra reference
+uv run --no-sync pytest -q
+uv run --no-sync python -m benchmarks.release_validate \
+  models/hub/laya-coreml models/hub/laya-multilingual-coreml \
+  models/hub/laya-typed-decisions-coreml models/hub/laya-multilingual-coreml-ane \
+  --repeats 100 --output benchmarks/results/upstream-v041-validation.json
+uv run --no-sync python -m build --outdir dist/v0.3.0
+uv run --no-sync python -m twine check --strict dist/v0.3.0/*
+```
+
+The test reference is upstream `laya/common.py` checked out at the pinned revision
+under `.upstream/laya/common.py`. The real model reference is the existing pinned
+FP32 fixture in `benchmarks/results/reference.json`; it describes sequential weights.
+MacOS CI validates tiny-model Core ML conversion and runtime, while full checkpoint
+validation runs locally on Apple hardware. Test failures block tag publication.

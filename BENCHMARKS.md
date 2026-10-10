@@ -83,3 +83,19 @@ python -m benchmarks.report
 ```
 
 Portable CI covers prompt/shape/trace behavior and packaging. The native Core ML conversion/prediction test and the real-checkpoint reports were executed locally on the Mac; CI does not download large model weights.
+
+
+## v0.3.0 runtime regression
+
+[Raw revalidation report](benchmarks/results/upstream-v041-validation.json) checks
+four unchanged published bundles against `benchmarks/results/reference.json`.
+English, multilingual and typed-decisions each match 63/63 selected answers;
+the fixed L96 multilingual ANE bundle matches 59/59 fitting questions, excluding
+four cases beyond its context capacity. Each bundle passes 100 identical repeated
+calls (248/248 agreements, 400 stability calls total). This release does not rerun
+or replace the older speed/energy measurements and makes no new throughput claim.
+
+New parallel layout is independently tested on tiny models against upstream v0.4.1,
+including all 24 option permutations, traced variable lengths and actual FP32/FP16
+Core ML execution on CPU and CPU+GPU. Published bundles use sequential layout;
+these tests do not claim task accuracy for newly trained parallel weights.

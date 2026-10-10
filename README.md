@@ -264,5 +264,9 @@ uv sync --extra convert --extra dev --extra demo --extra publish --extra referen
 uv run --no-sync pytest -q
 ```
 
-Existing published bundles are rechecked against the original FP32 golden fixture;
-see [the release validation report](benchmarks/results/upstream-v041-validation.json).
+The three general-purpose bundles match all 189/189 selected answers from the
+original FP32 golden fixture. The fixed L96 ANE bundle matches all 59/59 questions
+that fit its capacity (four long questions are excluded). Each bundle passes 100
+identical repeated calls: 248/248 agreements and 400 stability calls in total.
+This measures port fidelity on the fixture, not general task accuracy.
+See [the release validation report](benchmarks/results/upstream-v041-validation.json).
