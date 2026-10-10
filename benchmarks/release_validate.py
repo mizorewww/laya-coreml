@@ -41,18 +41,20 @@ def validate(directory, reference_path, repeats):
     drift = action_drift = 0.0
     repeat_cases = []
     for entry in reference["cases"]:
+        # Compare only source fixture rows that fit this graph without truncation.
+        # The runtime now uses the graph's true context for upstream predict_long.
+        if any(
+            len(i["ids"]) > agent.shape["max_length"]
+            or len(i["markers"]) > agent.shape["max_options"]
+            for i in entry["items"]
+        ):
+            report["cases"].append({"name": entry["name"], "skipped": "outside bundle capacity"})
+            continue
         items, _ = agent.prepare(entry["state"], entry["questions"])
         if [{key: item[key] for key in ("ids", "markers", "qtype")} for item in items] != entry[
             "items"
         ]:
             raise AssertionError("Prompt tokens changed during packaging")
-        if any(
-            len(i["ids"]) > agent.shape["max_length"]
-            or len(i["markers"]) > agent.shape["max_options"]
-            for i in items
-        ):
-            report["cases"].append({"name": entry["name"], "skipped": "outside bundle capacity"})
-            continue
         correct = 0
         case_drift = case_action = 0.0
         for start in range(0, len(items), agent.batch_size):

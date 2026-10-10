@@ -1,4 +1,3 @@
-# Derived from Laya (Apache-2.0); see NOTICE. Modified for laya-coreml.
 """Confidence validation, calibrated thresholds, and abstention gating helpers (#361).
 
 Pure Python: safe to import without PyTorch so that Router and structured

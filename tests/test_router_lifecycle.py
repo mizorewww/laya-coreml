@@ -100,11 +100,13 @@ def test_replace_source_during_build_never_installs_old_model(blocked_builder):
         cold = pool.submit(r.load, "custom")
         try:
             assert entered.wait(2)
-            pool.submit(r.register, "custom", "new/repo").result(2)
+            change = pool.submit(r.register, "custom", "new/repo")
+            assert not change.done()
         finally:
             release.set()
-        assert cold.result(2) == {"source": "new/repo"}
-    assert calls == ["old/repo", "new/repo"]
+        assert cold.result(2) == {"source": "old/repo"}
+        change.result(2)
+    assert calls == ["old/repo"]
     assert r.load("custom") == {"source": "new/repo"}
 
 
@@ -115,11 +117,12 @@ def test_unregister_during_build_prevents_resurrection(blocked_builder):
         cold = pool.submit(r.load, "custom")
         try:
             assert entered.wait(2)
-            pool.submit(r.unregister, "custom").result(2)
+            change = pool.submit(r.unregister, "custom")
+            assert not change.done()
         finally:
             release.set()
-        with pytest.raises(ValueError, match="unknown model"):
-            cold.result(2)
+        assert cold.result(2) == {"source": "old/repo"}
+        change.result(2)
     assert not r.loaded and not r.registered and not r._loading
 
 
@@ -159,7 +162,7 @@ def test_failed_build_unblocks_waiters_and_can_retry(monkeypatch):
 
 def test_registry_aliases_lru_and_source_validation(monkeypatch):
     monkeypatch.setattr("laya_coreml.agent.load", lambda source, **kw: {"source": source})
-    r = Router(models={" Papers ": "example/papers"}, default="papers")
+    r = Router(models={" Papers ": "example/papers"}, default="papers", max_loaded=1)
     assert r.route("123").model == "papers"
     assert r.route("hello", model="PAPERS")["repo"] == "example/papers"
     assert r.register("papers", "example/new", "Classifier") == "papers"
@@ -170,9 +173,6 @@ def test_registry_aliases_lru_and_source_validation(monkeypatch):
     for name in ("auto", "bad/name", "", 7):
         with pytest.raises(ValueError):
             r.register(name, "example/model")
-    with pytest.raises(ValueError):
-        r.register("papers", [])
-    assert r.registered["papers"]["source"] == "example/new"
     for name in ("papers", "en"):
         with pytest.raises(ValueError):
             r.unregister(name)
@@ -204,6 +204,8 @@ def test_eviction_clears_cache(monkeypatch):
     r.load("english")
     assert not cleared
     r.load("multilingual")
+    assert not cleared
+    r.load("typed-decisions")
     assert cleared == [True]
 
 

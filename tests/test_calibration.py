@@ -69,12 +69,23 @@ def test_read_temperatures_defaults_and_no_warning_when_clean():
 @pytest.mark.parametrize(
     "cfg",
     [
-        {"temperature": [1.0, 1.0]},  # wrong length
         {"temperature": [1.0, float("nan"), 1.0]},
         {"temperature": [1.0, 0.0, 1.0]},  # non-positive
         {"temperature": [1.0, 1.0, 1.0], "temperature_by_options": {"choice:2": -1.0}},
     ],
 )
-def test_read_temperatures_rejects_garbage(cfg):
-    with pytest.raises(ValueError):
-        read_temperatures(cfg)
+def test_read_temperatures_matches_official_clamping(cfg):
+    import warnings
+
+    with warnings.catch_warnings(record=True):
+        temperature, buckets, raw, raw_buckets = read_temperatures(cfg)
+    assert temperature == [clamp_temperature(t) for t in cfg["temperature"]]
+    assert buckets == {
+        k: clamp_temperature(v) for k, v in cfg.get("temperature_by_options", {}).items()
+    }
+    assert raw is cfg["temperature"]
+
+
+def test_temperature_shape_matches_official():
+    with pytest.raises(ValueError, match="list of 3"):
+        read_temperatures({"temperature": [1.0, 1.0]})

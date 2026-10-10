@@ -1,0 +1,92 @@
+[
+  {
+    "source": "convaiinnovations/laya",
+    "source_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "subfolder": null,
+    "bundle": "aac6fef/laya-coreml",
+    "bundle_revision": "fff78b2d9750c6b748fe8c90fcbf8bed0a1522a9",
+    "weights_sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya",
+    "source_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "subfolder": "multilingual",
+    "bundle": "aac6fef/laya-multilingual-coreml",
+    "bundle_revision": "8139e9089273319512c730218903784074133187",
+    "weights_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya",
+    "source_revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "subfolder": "typed-decisions",
+    "bundle": "aac6fef/laya-typed-decisions-coreml",
+    "bundle_revision": "28d24fa8d67a3264556b23391ec6c3fd98573056",
+    "weights_sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya",
+    "source_revision": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+    "subfolder": null,
+    "bundle": "aac6fef/laya-coreml",
+    "bundle_revision": "fff78b2d9750c6b748fe8c90fcbf8bed0a1522a9",
+    "weights_sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya",
+    "source_revision": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+    "subfolder": "multilingual",
+    "bundle": "aac6fef/laya-multilingual-coreml",
+    "bundle_revision": "8139e9089273319512c730218903784074133187",
+    "weights_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya",
+    "source_revision": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+    "subfolder": "typed-decisions",
+    "bundle": "aac6fef/laya-typed-decisions-coreml",
+    "bundle_revision": "28d24fa8d67a3264556b23391ec6c3fd98573056",
+    "weights_sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya-multilingual",
+    "source_revision": "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67",
+    "subfolder": null,
+    "bundle": "aac6fef/laya-multilingual-coreml",
+    "bundle_revision": "8139e9089273319512c730218903784074133187",
+    "weights_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya-multilingual",
+    "source_revision": "1720e3e3357cfe1e281542e223f8273b0890ca34",
+    "subfolder": null,
+    "bundle": "aac6fef/laya-multilingual-coreml",
+    "bundle_revision": "8139e9089273319512c730218903784074133187",
+    "weights_sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya-typed-decisions",
+    "source_revision": "1a793eb568e6718f15941d08f85432581df534e3",
+    "subfolder": null,
+    "bundle": "aac6fef/laya-typed-decisions-coreml",
+    "bundle_revision": "28d24fa8d67a3264556b23391ec6c3fd98573056",
+    "weights_sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+    "config_equal": true
+  },
+  {
+    "source": "convaiinnovations/laya-typed-decisions",
+    "source_revision": "e929ae5cf69bc34259cd2f95c9e91145b818b1f0",
+    "subfolder": null,
+    "bundle": "aac6fef/laya-typed-decisions-coreml",
+    "bundle_revision": "28d24fa8d67a3264556b23391ec6c3fd98573056",
+    "weights_sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+    "config_equal": true
+  }
+]

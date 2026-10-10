@@ -1,7 +1,31 @@
-# Derived from Laya (Apache-2.0); see NOTICE. Modified for laya-coreml.
 """Ready-to-use question presets for common production decision workflows."""
 
+import re
 from typing import Dict, Optional
+
+# A preset says which part of the state it reads by naming it in backticks: "What does the
+# customer want in `message`?". That convention is what `state_field` below depends on, and it is
+# the reason no table of preset -> key has to be kept in step by hand.
+_STATE_FIELD_RE = re.compile(r"`(\w+)`")
+
+
+def state_field(questions: Dict) -> Optional[str]:
+    """The state key ``questions`` reads, or ``None`` when that is not exactly one key.
+
+    Every built-in preset names a single field -- `message`, `body`, `prompt`, `post`, `request` --
+    and a caller that puts its text under a different key is asking the model about a field that is
+    not in the state. Surfacing the name lets a caller place the text correctly instead of guessing.
+    ``None`` covers both "names nothing" and "names several", because then only the caller knows
+    which field the request belongs in.
+    """
+    named = {
+        match
+        for spec in questions.values()
+        for match in _STATE_FIELD_RE.findall(spec.get("instructions") or "")
+    }
+    if len(named) != 1:
+        return None
+    return next(iter(named))
 
 
 def triage_questions() -> Dict:

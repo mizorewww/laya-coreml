@@ -1,27 +1,31 @@
-# Derived from Laya (Apache-2.0); see NOTICE. Modified for laya-coreml.
-"""Opt-in embedding shortlist for high-cardinality choice questions.
+"""Opt-in embedding shortlist and tournament for high-cardinality choice questions.
 
 Choice options share one ``head_max_len`` budget, so a large label set leaves only a few
 tokens per label. ``predict_shortlist`` embeds the state and each option with a
 caller-supplied ``embed_fn``, keeps the top ``k``, and runs a single ``predict`` (or
-``system_one``) on that reduced criteria set.
+``system_one``) on that reduced criteria set. ``predict_tournament`` needs no embedder: the
+decision model answers the labels in groups small enough to keep their tokens, and the group
+winners meet in one more ``predict``.
 
 ``Agent.predict`` and ``Agent.system_one`` are separate: they still score every criterion
-they are given. This module does not change ``DecisionModel.__call__`` and does not add a
-second decision-model pass.
+they are given. This module does not change ``DecisionModel.forward``.
+``predict_shortlist`` adds no second decision-model pass; ``predict_tournament`` adds one
+per elimination round.
 
-The coarse-to-fine pattern is the one the upstream README recommends and the one reported in
+The coarse-to-fine pattern is the one the README recommends and the one reported in
 https://github.com/NandhaKishorM/laya/issues/102. Ranking here is cosine similarity on
 whatever vectors ``embed_fn`` returns. Issue #102's BANKING77 figures belong to that
 report; this module does not measure them.
 """
 
 import json
+import threading
+from collections import OrderedDict
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 
-from .common import render_options, serialize_state
+from .common import encode_text, render_options, serialize_state
 
 DEFAULT_SHORTLIST_K = 20
 DEFAULT_TOURNAMENT_GROUP = 16
@@ -34,7 +38,8 @@ def shortlist_choice(
     k: int = DEFAULT_SHORTLIST_K,
     *,
     instructions: Optional[str] = None,
-) -> List[Any]:
+    return_scores: bool = False,
+) -> Any:
     """Return the top-``k`` choice labels for ``state``.
 
     ``embed_fn`` maps a list of strings to an array of shape ``(len(texts), dim)``.
@@ -44,10 +49,19 @@ def shortlist_choice(
     When ``k`` is at least the number of labels, every label is returned in its
     original order and ``embed_fn`` is not called.
 
-    Ties keep the earlier label. A zero vector scores 0: it ranks above negative
-    cosine scores and below positive scores.
+    Ties keep the earlier label. Ranking is a signed cosine, not a similarity floor:
+    a label that scores 0 -- no signal at all, or a non-finite vector treated as one
+    -- does outrank an earlier label that scored negative, and ``k`` drops the
+    negative labels first.
+
+    With ``return_scores=True`` the return is the ``(labels, scores)`` pair, where
+    ``scores`` holds the signed cosine per kept label in rank order -- the same
+    values ``predict_shortlist`` reports in its ``shortlist`` metadata. ``scores``
+    is ``None`` when nothing was dropped, exactly as in that metadata.
     """
-    labels, _scores, _passthrough, _n = _rank(state, criteria, embed_fn, k, instructions)
+    labels, scores, _passthrough, _n = _rank(state, criteria, embed_fn, k, instructions)
+    if return_scores:
+        return labels, scores
     return labels
 
 
@@ -67,8 +81,11 @@ def predict_shortlist(
 
     The returned dict is the model result plus a ``shortlist`` entry. Probabilities
     on a shortlisted choice are over the kept labels only. ``shortlist[qid]`` holds
-    ``labels`` (rank order), ``scores`` (cosine, or ``None`` when nothing was
-    dropped), ``k``, ``n``, and ``passthrough``.
+    ``labels``, ``scores``, ``k``, ``n``, and ``passthrough``. ``labels`` is the rank
+    order a shortlist produced, or the criteria order itself when ``passthrough`` is
+    set and no ranking ran; ``scores`` is the signed cosine of each kept label in that
+    order -- negative included, never clamped to 0 -- or ``None`` when nothing was
+    dropped.
 
     Extra keyword arguments are forwarded to ``predict`` / ``system_one`` (for
     example ``model=`` on a ``Router``).
@@ -132,7 +149,7 @@ def predict_tournament(
     caller's ``questions`` dict is not mutated.
 
     The returned dict is the final call's result plus a ``tournament`` entry.
-    ``tournament[qid]`` holds ``labels`` (the finalists, in criteria order), ``n`` (the original
+    ``tournament[qid]`` holds ``labels`` (the finalists, in criteria order), ``n`` (the
     label count) and ``rounds`` for each choice question. Probabilities, confidences and
     ``usage`` come from the final call, so a tournament choice's probabilities are over its
     finalists only.
@@ -185,6 +202,175 @@ def predict_tournament(
     out = dict(result)
     out["tournament"] = meta
     return out
+
+
+def embed_fn_from_agent(
+    agent: Any,
+    max_length: int = 512,
+    batch_size: int = 32,
+) -> Callable[[Sequence[str]], np.ndarray]:
+    """Mean-pool the checkpoint encoder already loaded on ``agent``.
+
+    The callable embeds a list of strings with ``agent.tok`` and ``agent.model.encoder``.
+    It does not run the decision head and does not download weights. A dedicated
+    bi-encoder passed as ``embed_fn`` will usually shortlist better; this helper is
+    for callers who only have the Laya checkpoint in memory.
+
+    Padding positions are excluded from the mean. The encoder's train/eval flag is
+    left as the caller set it (a loaded ``Agent`` is already in eval).
+    Each call uses the current ``agent.device``, including after CPU fallback.
+    """
+    if isinstance(max_length, bool) or not isinstance(max_length, int) or max_length < 1:
+        raise ValueError("max_length must be a positive integer, got %r" % (max_length,))
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size < 1:
+        raise ValueError("batch_size must be a positive integer, got %r" % (batch_size,))
+
+    if not hasattr(agent.model, "encoder"):
+        raise NotImplementedError(
+            "This Core ML bundle exposes decision outputs only; supply an external embed_fn."
+        )
+
+    import torch
+
+    tok = agent.tok
+    encoder = agent.model.encoder
+
+    def embed_fn(texts: Sequence[str]) -> np.ndarray:
+        rows = ["" if text is None else str(text) for text in texts]
+        hidden = _hidden_size(encoder)
+        if not rows:
+            return np.zeros((0, hidden), dtype=np.float32)
+        device = agent.device
+        parts: List[np.ndarray] = []
+        for start in range(0, len(rows), batch_size):
+            chunk = rows[start : start + batch_size]
+            encoded = encode_text(
+                tok,
+                chunk,
+                padding=True,
+                truncation=True,
+                max_length=max_length,
+                return_tensors="pt",
+            )
+            input_ids = encoded["input_ids"].to(device)
+            attention_mask = encoded["attention_mask"].to(device)
+            with torch.inference_mode():
+                hidden_states = encoder(
+                    input_ids=input_ids, attention_mask=attention_mask
+                ).last_hidden_state
+                mask = attention_mask.unsqueeze(-1).to(dtype=hidden_states.dtype)
+                pooled = (hidden_states * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
+            parts.append(pooled.float().cpu().numpy())
+        return np.concatenate(parts, axis=0)
+
+    return embed_fn
+
+
+def cached_embed_fn(
+    embed_fn: Callable[[Sequence[str]], Any],
+    maxsize: int = 4096,
+) -> Callable[[Sequence[str]], np.ndarray]:
+    """Cache ``embed_fn`` output per input string, under an LRU bound.
+
+    ``predict_shortlist`` embeds the query plus every option text on each call. When the
+    same option set is shortlisted on every request -- a fixed intent or label list, as
+    in the README's BANKING77 example -- the option rows do not change between calls,
+    yet they are re-embedded every time. Wrapping the embedder once::
+
+        embed_fn = cached_embed_fn(embed_fn_from_agent(agent))
+
+    leaves the first call unchanged and reduces each repeat call to embedding the new
+    query alone.
+
+    Lookups are exact string matches. Texts missing from the cache are deduplicated and
+    embedded in a single ``embed_fn`` call, so a cold cache costs the same number of
+    batched calls as the unwrapped function. Rows are stored as float32; the cache holds
+    at most ``maxsize`` strings and then evicts the least recently used entry, bounding
+    memory at about ``maxsize * dim * 4`` bytes. Nothing is cached when ``embed_fn``
+    raises or returns a bad shape.
+
+    The wrapper is safe to share between threads: the lock covers only cache reads and
+    writes, never the embedding call. The returned callable carries ``cache_info()`` --
+    a dict with ``size``, ``maxsize``, ``hits`` and ``misses`` -- and ``cache_clear()``.
+    Clear the cache if the model or weights behind ``embed_fn`` change.
+    """
+    if not callable(embed_fn):
+        raise TypeError("embed_fn must be callable")
+    if isinstance(maxsize, bool) or not isinstance(maxsize, int) or maxsize < 1:
+        raise ValueError("maxsize must be a positive integer, got %r" % (maxsize,))
+
+    rows_by_text: OrderedDict[str, np.ndarray] = OrderedDict()
+    lock = threading.Lock()
+    counts = {"hits": 0, "misses": 0}
+
+    def cached(texts: Sequence[str]) -> np.ndarray:
+        keys = ["" if text is None else str(text) for text in texts]
+        if not keys:
+            return np.zeros((0, 0), dtype=np.float32)
+        with lock:
+            found: Dict[str, np.ndarray] = {}
+            hits = 0
+            for key in keys:
+                row = rows_by_text.get(key)
+                if row is not None:
+                    rows_by_text.move_to_end(key)
+                    found[key] = row
+                    hits += 1
+            counts["hits"] += hits
+            counts["misses"] += len(keys) - hits
+            missing = [key for key in dict.fromkeys(keys) if key not in found]
+        if missing:
+            raw = embed_fn(list(missing))
+            if hasattr(raw, "detach"):
+                raw = raw.detach().float().cpu().numpy()
+            fresh = np.asarray(raw, dtype=np.float32)
+            if fresh.ndim != 2 or fresh.shape[0] != len(missing) or fresh.shape[1] < 1:
+                raise ValueError(
+                    "embed_fn must return an array of shape (%d, dim), got %s"
+                    % (len(missing), tuple(fresh.shape))
+                )
+            fresh = np.nan_to_num(fresh, copy=True, nan=0.0, posinf=0.0, neginf=0.0)
+            if rows_by_text:
+                # Rows stored under one dimensionality cannot be stacked against rows of
+                # another: a changed embedder (or one whose dimension drifts between calls)
+                # would otherwise surface rows of mixed width, which `_rank` reads as one
+                # matrix. Deciding by identity is what the docstring already asks of the
+                # caller ("clear the cache if the model changes") -- this refuses the call
+                # instead of returning a matrix that silently mixes both.
+                want = next(iter(rows_by_text.values())).shape[0]
+                if fresh.shape[1] != want:
+                    raise ValueError(
+                        "embed_fn returned dim %d, but the cache holds dim %d; "
+                        "call cache_clear() if the model behind embed_fn changed"
+                        % (fresh.shape[1], want)
+                    )
+            with lock:
+                for key, row in zip(missing, fresh):
+                    rows_by_text[key] = row
+                    rows_by_text.move_to_end(key)
+                    while len(rows_by_text) > maxsize:
+                        rows_by_text.popitem(last=False)
+                    found[key] = row
+        return np.stack([found[key] for key in keys])
+
+    def cache_info() -> Dict[str, int]:
+        with lock:
+            return {
+                "size": len(rows_by_text),
+                "maxsize": maxsize,
+                "hits": counts["hits"],
+                "misses": counts["misses"],
+            }
+
+    def cache_clear() -> None:
+        with lock:
+            rows_by_text.clear()
+            counts["hits"] = 0
+            counts["misses"] = 0
+
+    cached.cache_info = cache_info
+    cached.cache_clear = cache_clear
+    return cached
 
 
 def _rank(state, criteria, embed_fn, k, instructions):
@@ -285,3 +471,10 @@ def _call_predict(agent, state, questions, **predict_kwargs):
     if fn is None:
         raise TypeError("agent must provide predict or system_one")
     return fn(state, questions, **predict_kwargs)
+
+
+def _hidden_size(encoder) -> int:
+    size = getattr(getattr(encoder, "config", None), "hidden_size", None)
+    if isinstance(size, bool) or not isinstance(size, int) or size < 1:
+        return 0
+    return size

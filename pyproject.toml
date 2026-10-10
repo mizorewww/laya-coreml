@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "laya-coreml"
-version = "0.3.0"
+version = "0.4.0"
 description = "Local Laya typed decisions on Apple Core ML and Neural Engine, with a live Snake demo"
 keywords = ["coreml", "neural-engine", "laya", "decision-model", "apple-silicon", "local-ai"]
 classifiers = [
@@ -21,6 +21,13 @@ readme = "README.md"
 dependencies = ["coremltools>=9,<10", "numpy>=1.26,<2.2", "tokenizers>=0.21,<1", "huggingface-hub>=0.34,<2", "safetensors>=0.6"]
 
 [project.optional-dependencies]
+serve = ["fastapi>=0.110.0", "uvicorn>=0.27.0", "httpx>=0.27.0"]
+mcp = ["mcp>=2.2.0"]
+structured = ["pydantic>=2"]
+calibration = ["torch==2.7.0"]
+langchain = ["langchain-core>=0.2.0", "langgraph>=0.1.0"]
+llamaindex = ["llama-index-core>=0.10.0"]
+crewai = ["crewai>=0.28.0"]
 convert = ["torch==2.7.0", "safetensors>=0.6"]
 dev = ["pytest>=8", "ruff>=0.12", "build>=1", "psutil>=6"]
 compare = ["laya-mlx==0.2.0"]
@@ -30,6 +37,10 @@ reference = ["transformers>=5,<6"]
 publish = ["twine>=6,<7"]
 
 [project.scripts]
+laya-coreml-router = "laya_coreml.router_cli:main"
+laya-coreml-serve = "laya_coreml.serve:main"
+laya-coreml-evals = "laya_coreml.evals_cli:main"
+laya-coreml-mcp-server = "laya_coreml.mcp.server:main"
 laya-coreml = "laya_coreml.cli:main"
 laya-coreml-snake = "laya_coreml.snake.cli:main"
 
@@ -53,3 +64,7 @@ testpaths = ["tests"]
 line-length = 100
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.uv]
+# CrewAI's instructor requires Rich <15; the existing Snake demo uses Rich 15.
+conflicts = [[{ extra = "crewai" }, { extra = "demo" }]]

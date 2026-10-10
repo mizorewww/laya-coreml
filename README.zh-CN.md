@@ -118,41 +118,21 @@ ANE FP16 L96 通过 **59/59**，最大校准概率偏差 0.002925；W8 同一子
 这不是 Convai Innovations 或 Apple 官方发行版，归属见 [NOTICE](NOTICE)。
 
 
-## v0.3.0：同步上游 v0.4.1 运行时功能
+## v0.4.0：以官方行为为准
 
-新增 `Router`，自动选择已发布的英文、多语言和 typed-decisions Core ML 模型。
-语言无法确定时默认使用 multilingual；可用 `Router(default="english")` 改为英文回退。
-支持 `models=`、`register`、`unregister`、`registered`、`attach`、`preload` 和 `unload`。
-冷加载不会阻塞其他已驻留模型和状态查询；并发加载共享构建，替换来源后旧构建不会重新驻留。
-卸载只释放 Router 持有的引用，不会使调用者或执行中请求持有的模型失效。
+本版直接迁移官方 Laya v0.4.1（`1adc59f`）主机端代码，替换此前经 MLX
+选择性移植的实现。默认值、输入校验、返回结构、路由与并发行为均以官方为准。
+新增批量预测、长文本扫描、完整 hooks、结构化决策、语言校准与校准保存／加载，
+并迁移官方路由 CLI、HTTP 服务、MCP 本地／远程工具及评估框架。
+数值和布尔选项标签、`option_order`、score legend、空问题 usage 等也恢复官方语义。
 
-```python
-import laya_coreml as laya
+迁移时注意：`load()` 默认加载英文模型，`Router()` 默认保留两个模型。
+需要保留原选择时，请显式使用 `load("multilingual")` 或 `Router(max_loaded=1)`。
+Core ML 模型仍保留导出的真实上下文和选项上限；ANE 的 96-token 限制不会消失。
+普通预测按该预算使用官方截断逻辑，`predict_long` 按该预算扫描长文本。
 
-router = laya.Router(max_loaded=2)
-result = router.predict(state, questions, min_confidence=0.7)
-result = laya.predict_tournament(router, state, questions, group_size=16)
-```
-
-`Agent`、`ANEAgent`、`Router` 均支持标量或按选项数量分桶的 `min_confidence`。
-门控增加弃权标记，保留原答案，不会自动调用其他模型。
-`predict_tournament` 无需 embedding，通过分组淘汰处理大候选集；返回的概率和 usage
-仅描述最终一轮，`tournament` 记录候选和轮次。也可使用外部 embedding 函数配合
-`predict_shortlist` / `shortlist_choice`。分组大小应不超过导出包的选项容量。
-
-同步了大写缩写、强调大写及混合文字的语言检测修复，并提供显式邮件清理工具
-`laya_coreml.email`，包括法语设备页脚修复。推理仍不依赖 PyTorch、Transformers 或 MLX。
-
-通用 Core ML 转换器新增 `option_layout="parallel"` 支持，覆盖共享位置、选项隔离掩码、
-动态长度、准备输入及实际推理。FP32/FP16 导出在 CPU 和 CPU+GPU 上验证，并与上游
-v0.4.1 对齐。配置缺省仍为 sequential；不能通过修改旧模型 JSON 将其变成 parallel。
-旧 ANE 图固化了顺序位置编码，会明确拒绝 parallel 配置；parallel checkpoint 使用通用
-Core ML 转换路径。旧 ANE 模型可直接使用新增路由、门控及决策辅助功能。
-
-CI 同时运行 Linux 和 macOS 测试。排列测试覆盖四个选项的全部 24 种顺序，包含顺序布局
-敏感性对照、上游数值对齐和真正的 Core ML 转换/加载测试。
-三个通用模型合计 189/189 个最终选择与原始 FP32 参考一致；L96 ANE 模型在容量内
-的 59/59 个问题上对齐（排除四个长输入）。每个包各通过 100 次相同结果的重复调用，
-合计 248/248 对齐、400 次稳定性调用。这是固定样例的移植一致性验证，不是通用准确率。
-真实模型复验见 [原始报告](benchmarks/results/upstream-v041-validation.json)，
-详细 API 与复现步骤见 [英文 README](README.md#upstream-v041-runtime-port-v030)。
+详见 [0.4.0 迁移与兼容范围](docs/MIGRATION_0_4.md)、
+[官方权重／配置核对](benchmarks/results/official-v041-artifact-audit.json) 和
+[实际模型验证](benchmarks/results/official-host-v040-validation.json)。
+测试覆盖官方原始断言、源码与差分对照，以及 macOS 上真实 Core ML 转换和推理。
+推理不依赖 PyTorch、Transformers 或 MLX；可选温度拟合使用 PyTorch。

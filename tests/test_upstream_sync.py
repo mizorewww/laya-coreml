@@ -15,7 +15,7 @@ class WordTokenizer:
         self.vocab = {}
         self.calls = []
 
-    def __call__(self, text, add_special_tokens=False):
+    def __call__(self, text, add_special_tokens=False, **kwargs):
         self.calls.append(text)
         return {
             "input_ids": [self.vocab.setdefault(w, len(self.vocab) + 100) for w in text.split()]
@@ -76,9 +76,9 @@ def test_noul_labels_unicode_and_named_validation():
         dict(q, instructions=None),
         dict(q, instructions=" "),
     ]:
-        with pytest.raises(ValueError, match="Question 'check'"):
+        with pytest.raises(ValueError, match="question 'check'"):
             a.prepare("state", {"check": bad})
-    with pytest.raises(ValueError, match="state"):
+    with pytest.raises(TypeError, match="state"):
         a.prepare(None, Q)
 
 
@@ -113,18 +113,17 @@ def test_usage_matches_each_question_budget_and_reports_option_collapse():
     assert out["usage"]["options"] == {"many": {"total": 6, "distinct": 1, "tokens_per_option": 4}}
     assert out["answers"]["q"]["answer_confidence"] == 0.5
     assert out["answers"]["q"]["confidence"] == 0.0
-    assert a.predict("", {})["usage"]["truncated"] is False
+    assert a.predict("", {})["usage"] == {"input_tokens": 0, "output_tokens": 0}
 
 
 def test_shared_mixins_and_export_capacity():
     from laya_coreml.ane import ANEAgent
     from laya_coreml.inputs import collate_items
-    from laya_coreml.prompt import PromptMixin
-    from laya_coreml.result import ResultMixin
+    from laya_coreml.runtime import RuntimeMixin
 
     for cls in (Agent, ANEAgent):
-        assert cls.prepare is PromptMixin.prepare
-        assert cls.predict is ResultMixin.predict
+        assert cls.prepare is RuntimeMixin.prepare
+        assert cls.predict is RuntimeMixin.predict
     a = preparation_agent()
     items, _ = a.prepare("word " * 100, Q)
     with pytest.raises(ValueError, match="tokens"):

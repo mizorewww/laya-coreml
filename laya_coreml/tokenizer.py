@@ -23,5 +23,11 @@ class Tokenizer:
             setattr(self, name, value)
             setattr(self, name + "_id", token_id)
 
-    def __call__(self, text, add_special_tokens=False):
-        return {"input_ids": self.backend.encode(text, add_special_tokens=add_special_tokens).ids}
+    def __call__(self, text, add_special_tokens=False, truncation=False, max_length=None):
+        ids = self.backend.encode(text, add_special_tokens=add_special_tokens).ids
+        if truncation and max_length is not None:
+            ids = ids[:max_length]
+        return {"input_ids": ids}
+
+    def decode(self, ids, skip_special_tokens=False, **kwargs):
+        return self.backend.decode(list(ids), skip_special_tokens=skip_special_tokens, **kwargs)

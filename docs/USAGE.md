@@ -28,8 +28,9 @@ extra installs PyTorch for exporting the original checkpoints.
 The ANE packages include their own host embedding/action weights and the unchanged
 Core ML body. They do not need an original checkpoint directory. The 96-token
 capacity includes the question, option descriptions, special markers and state.
-These short exports reject a request that does not fit. The general-purpose
-models retain upstream state truncation at their full checkpoint context limit;
+These short exports use upstream state truncation at their actual graph context limit.
+`predict_long` scans that budget; oversized question heads and option counts still fail.
+The general-purpose models use their full checkpoint context limit;
 option descriptions also use the original question-prefix budget.
 
 ## Python API
@@ -142,3 +143,8 @@ python -m experiments.ane_engineering.probe --source laya-multilingual \
 
 See [conversion findings](CONVERSION.md), [ANE engineering](ANE_ENGINEERING.md)
 and [Snake controls and recording](SNAKE_DEMO.md) for the corresponding workflows.
+
+## Official host compatibility
+
+See [the 0.4.0 migration guide](MIGRATION_0_4.md) for batch and long-text inference,
+hooks, structured decisions, calibration, defaults and artifact revision mapping.

@@ -33,3 +33,11 @@ cleaning synchronized through upstream 1adc59f7e371deb601fcfa18a14e25db238addcc
 Parallel option layout adapted for the export-only PyTorch graph and Core ML
 input signatures. Existing sequential Core ML and ANE bundles remain supported;
 parallel checkpoints require a matching newly converted general Core ML graph.
+
+Version 0.4.0 host inference, routing, hooks, structured decisions, calibration,
+confidence, shortlist, language, email, revision/integrity and framework integration
+code is ported directly from official Laya v0.4.1 at
+1adc59f7e371deb601fcfa18a14e25db238addcc, replacing the selective host port.
+Adaptations: NumPy collation and fixed-shape Core ML transport; lazy optional
+PyTorch fitting/training imports; converted-artifact resolution and context limits;
+Core ML resource cleanup. See docs/MIGRATION_0_4.md for compatibility boundaries.

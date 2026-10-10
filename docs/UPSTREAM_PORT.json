@@ -1,0 +1,33 @@
+{
+  "package_version": "0.4.0",
+  "upstream_repository": "https://github.com/NandhaKishorM/laya",
+  "upstream_version": "0.4.1",
+  "upstream_commit": "1adc59f7e371deb601fcfa18a14e25db238addcc",
+  "policy": "Official host behavior is authoritative; Core ML adaptations stay at backend boundaries.",
+  "direct_host_modules": [
+    "hooks", "structured", "confidence", "lang", "email", "presets", "revisions",
+    "evidence", "router", "shortlist", "calibrate", "evals", "evals_cli",
+    "evals_shortlist", "_eval_policy", "serve", "mcp", "integrations"
+  ],
+  "relocated_code": {
+    "official agent host methods": "laya_coreml/runtime.py",
+    "official CLI": "laya_coreml/router_cli.py",
+    "official common host functions": "laya_coreml/common.py"
+  },
+  "backend_adaptations": [
+    "NumPy collation and fixed-shape Core ML forward transport",
+    "Core ML graph context capacity, device selection and resource cleanup",
+    "Removal of CUDA autocast scope; deferred optional PyTorch calibration/training imports",
+    "Converted artifact mapping, reviewed revision translation and bundle digest verification",
+    "Explicit unsupported backend, encoder-embedding, training and thread-pool controls",
+    "Core ML HTTP/MCP device labels and distribution version metadata"
+  ],
+  "test_adaptations": [
+    "Imports and mock targets point to laya_coreml; source model IDs and expected host values remain unchanged",
+    "Router construction stubs are dispatched through the Core ML factory",
+    "Two structured suites exclude their ONNX-only method-existence assertion",
+    "CUDA device, PyTorch thread-pool and training CLI checks use separate Core ML boundary tests"
+  ],
+  "artifact_audit": "benchmarks/results/official-v041-artifact-audit.json",
+  "real_model_validation": "benchmarks/results/official-host-v040-validation.json"
+}

@@ -1,21 +1,10 @@
 ![Laya Core ML playing Snake with real local model probabilities](https://raw.githubusercontent.com/mizorewww/laya-coreml/main/docs/assets/snake-demo.gif)
 
-Version 0.2.0 synchronizes applicable prompt and result fixes through upstream
-`4aa6761` (source version 0.3.23). Both Core ML and ANE runtimes accept custom
-`noul` display labels (`{"false": "no", "true": "yes"}`), validate questions with
-question-specific errors, and preserve Unicode structured instructions. Long
-conversation lists retain their newest tokens; strings and objects retain their
-beginning. `usage` reports state truncation and, when present, collapsed options.
-`answer_confidence` is the highest answer probability; existing `confidence`
-semantics remain unchanged. Neither field establishes calibration accuracy.
-The checkpoint temperature clamp documented below is included in this release.
-Exported graph capacity limits still raise errors rather than silently clipping.
-
-Maintenance follows upstream Laya fixes applicable to these runtimes. New runtime
-features and backend-specific optimization proposals require an upstream-aligned
-implementation and validation; closing an issue does not establish that its
-reported behavior is fixed.
-
+Version **0.4.0** aligns the host inference contract directly with official Laya
+**v0.4.1** (`1adc59f`), replacing the earlier selective port. Batch/long-text
+prediction, hooks, structured decisions, calibration, HTTP/MCP, evaluation and Router behavior now
+share the official host semantics. See the [migration guide](https://github.com/mizorewww/laya-coreml/blob/main/docs/MIGRATION_0_4.md)
+for changed defaults, validation evidence and the remaining Core ML boundaries.
 
 # Laya-CoreML
 
@@ -91,11 +80,15 @@ raw values remain available as `agent.temperature_raw` and
 bucket at load.
 
 The ANE bundle has a **96-token total limit**, including question, options and
-state. Longer requests raise a capacity error. Use
+state. State truncation and long-text scanning use that actual budget; oversized
+question heads or option sets still fail. Use
 `aac6fef/laya-multilingual-coreml` for the general-purpose 1024-token model.
 [Full API, model selection and offline usage](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md).
 
 ## Measured on M3 Max
+
+Performance figures below come from the linked original benchmark runs. Version
+0.4.0 validates fidelity; it makes no new throughput or energy claim.
 
 40-core GPU, 128 GiB, macOS 27.2. One 91-token question padded to 96, including
 prompt preparation, tokenization, arrays, synchronous inference, calibration and
@@ -179,11 +172,12 @@ Not an official Convai Innovations or Apple release. See
 [NOTICE](https://github.com/mizorewww/laya-coreml/blob/main/NOTICE).
 
 
-## Upstream v0.4.1 runtime port (v0.3.0)
+## Official v0.4.1 host compatibility (v0.4.0)
 
-This release ports the runtime features at upstream `1adc59f` to Core ML. Model
+This release ports host behavior directly from upstream `1adc59f` to Core ML. Model
 weights remain separate downloads. The runtime still needs no PyTorch, Transformers,
-or MLX; PyTorch is used only for conversion and reference testing.
+or MLX. Optional temperature fitting, training helpers and conversion use PyTorch.
+[Migration and complete compatibility scope](https://github.com/mizorewww/laya-coreml/blob/main/docs/MIGRATION_0_4.md).
 
 ```python
 import laya_coreml as laya
@@ -197,7 +191,7 @@ router.unregister("local")
 ```
 
 `Router()` uses the published English, multilingual and typed-decisions **Core ML**
-bundles. It defaults to multilingual when the language is undecided. Use
+bundles. It defaults to two resident models and to multilingual when the language is undecided. Use
 `Router(default="english")` to choose English as the fallback. `route()` inspects a
 request without loading weights; explicit `model`, `task`, and `lang` override
 inference from the input. Automatic typed-workflow detection is opt-in through
@@ -209,8 +203,8 @@ Pass `models={"custom": "./bundle"}` at construction, or use `register`, `regist
 IDs. `compute_units`, `revision`, and `local_files_only` are passed to bundle loading.
 An attached ANE bundle uses its usual CPU+NE default when `compute_units` is omitted.
 Resident-model access and status reads remain available during a cold load; duplicate
-loads share construction. Replacing/unregistering a source prevents an old in-flight
-build from becoming resident. Unload drops router references without invalidating
+loads share construction. Replacing/unregistering a source waits for its in-flight build, then removes the
+old resident entry, following official synchronization. Unload drops router references without invalidating
 agents held by callers or ongoing predictions. Core ML manages native caches; the
 router collects unreachable Python objects and never deletes cached model files.
 
@@ -269,4 +263,4 @@ original FP32 golden fixture. The fixed L96 ANE bundle matches all 59/59 questio
 that fit its capacity (four long questions are excluded). Each bundle passes 100
 identical repeated calls: 248/248 agreements and 400 stability calls in total.
 This measures port fidelity on the fixture, not general task accuracy.
-See [the release validation report](benchmarks/results/upstream-v041-validation.json).
+See [the release validation report](benchmarks/results/official-host-v040-validation.json).

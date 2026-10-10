@@ -8,16 +8,19 @@ import coremltools as ct
 import numpy as np
 from safetensors import safe_open
 
-from laya_coreml.prompt import PromptMixin
-from laya_coreml.result import ResultMixin
 from laya_coreml.tokenizer import Tokenizer
 
 from .artifacts import package_for_coreml, verify_files, verify_research_manifest
 from .common import option_layout, read_temperatures
+from .runtime import RuntimeMixin
 
 
-class ANEAgent(PromptMixin, ResultMixin):
-    def __init__(self, source, package=None, *, length=None, compute_units="cpu_ne"):
+class ANEAgent(RuntimeMixin):
+    def __init__(
+        self, source, package=None, *, length=None, compute_units="cpu_ne", **host_options
+    ):
+        self._host_options = host_options
+        self.model_id = self.model_id_or_path = str(source)
         self.source = Path(source)
         if package is None:
             self.manifest = json.loads((self.source / "coreml_config.json").read_text())
@@ -61,7 +64,9 @@ class ANEAgent(PromptMixin, ResultMixin):
             "flexible": False,
             "lengths": None,
         }
+        self._init_host(**host_options)
         self.compute_units = compute_units
+        self.device = "coreml:" + compute_units
         units = {
             "cpu_ne": ct.ComputeUnit.CPU_AND_NE,
             "cpu_gpu": ct.ComputeUnit.CPU_AND_GPU,

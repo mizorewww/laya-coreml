@@ -1,4 +1,3 @@
-# Derived from Laya (Apache-2.0); see NOTICE. Modified for laya-coreml.
 """Email utilities for cleaning and structuring email inputs in laya.
 
 The markers below cover English, Portuguese, Spanish and French mail clients. The Router already sends
@@ -15,7 +14,7 @@ import unicodedata
 from typing import Dict, List, Optional
 
 # One definition, in the module that holds the other presets. Re-exported here because
-# `from laya.email import email_questions` is a path callers already have.
+# `from laya_coreml.email import email_questions` is a path callers already have.
 from .presets import email_questions  # noqa: F401
 
 _QUOTE_HEADERS = [
