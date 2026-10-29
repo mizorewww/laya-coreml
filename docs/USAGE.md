@@ -199,6 +199,19 @@ while another loads, and duplicate loads share one construction. Unloading drops
 reference without invalidating agents held elsewhere. Core ML manages its native caches; the router
 never deletes cached model files.
 
+## Hooks and batching
+
+`Agent` and `Router` accept `hooks=[...]` objects implementing any of `on_route`, `on_load`,
+`on_evict`, `on_predict_start`, `on_predict_end` and `on_error`; async methods run to completion.
+`hooks_timeout` bounds each call, but Python threads cannot be interrupted, so an overrunning hook
+keeps running in the background. With `hooks_concurrent=False` a timed-out hook keeps the
+serialization lock until it exits, the timeout includes waiting for that lock, and a hook whose
+deadline passes while waiting is never called. `Router(hooks_raise=False)` turns hook errors and
+timeouts into warnings.
+
+`predict_batch` groups requests with identical question schemas into shared forward passes.
+Grouping keeps Python key types and option order, so integer `1` and string `"1"` stay distinct.
+
 ## Confidence gate
 
 `Agent`, `ANEAgent` and `Router` accept `min_confidence=0.7` or a bucket map such as

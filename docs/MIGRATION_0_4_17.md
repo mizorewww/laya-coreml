@@ -55,6 +55,18 @@ PyTorch. A model that exposes no encoder still raises the existing
 provide decision outputs, not encoder embeddings. PyTorch/ONNX backend switches,
 training and thread controls remain explicitly unsupported. No new backend is added.
 
+## Deliberate divergences from upstream
+
+These fix defects that upstream v0.4.17 still has, under the policy in
+[AGENTS.md](../AGENTS.md). Both were first fixed in laya-mlx
+([#26](https://github.com/mizorewww/laya-mlx/pull/26)) and ported unchanged. Each keeps upstream's
+public API and is pinned by its own regression tests, which fail on the unfixed code (12 of 16).
+
+| Behavior | Upstream v0.4.17 | Core ML | Tests |
+|---|---|---|---|
+| `Router.predict_batch` grouping | Schemas serialized with `json.dumps`, so key `1` and `"1"` (or `True` and `"true"`) share a group and later requests receive the first request's key types | Grouping signature keeps Python key types and insertion order; equal schemas still share a batch | `tests/test_batch_key_types.py` |
+| Serial hook timeout (`hooks_concurrent=False`) | The caller releases the lock when a hook times out while the hook is still running, so later serial hooks can overlap it | The worker holds the lock until the hook exits; `hooks_timeout` includes the lock wait, and a hook whose deadline passes while waiting is never invoked | `tests/test_hook_serialization.py` |
+
 ## Complete source inventory
 
 The machine-readable [inventory](UPSTREAM_PORT.json) records every changed upstream

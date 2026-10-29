@@ -8,6 +8,11 @@ adaptations to the Core ML tensor, artifact, device and resource boundaries. Doc
 material incompatibility in [docs/MIGRATION_0_4_17.md](docs/MIGRATION_0_4_17.md) (current) or
 [docs/MIGRATION_0_4.md](docs/MIGRATION_0_4.md) (carried forward). Keep explicit failures for
 unsupported backends. Never change an expected value only to make a test pass.
+
+A bug that upstream still has may be fixed here (or ported from laya-mlx) if it is reproduced
+against the pinned upstream code, the fix keeps upstream's public API, new regression tests fail
+before and pass after, and the change is listed under "Deliberate divergences from upstream" in
+the current migration document.
 [AGENTS.md](AGENTS.md) states the same policy for coding agents.
 
 ## Development setup

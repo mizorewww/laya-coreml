@@ -3,6 +3,15 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## Unreleased
+
+- **Fix:** `predict_batch` no longer groups integer or boolean keys with their string equivalents
+  (`1` vs `"1"`), which returned the wrong key types for later requests.
+- **Fix:** with `hooks_concurrent=False`, a timed-out hook keeps the serialization lock until it
+  exits, and a hook whose deadline passes while waiting is never called.
+- Both are ported from laya-mlx 0.6.0 and documented as divergences from upstream v0.4.17.
+- The compatibility policy now allows documented, tested fixes for upstream defects.
+
 ## 0.6.0 — 2026-10-29
 
 Follows upstream **v0.4.17** (`fe9a6c35`). [Migration record](docs/MIGRATION_0_4_17.md).

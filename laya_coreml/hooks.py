@@ -527,7 +527,9 @@ def _hook_name(method: Any) -> str:
     )
 
 
-def _call_hook(method: Any, ctx: PredictContext, timeout: Optional[float]) -> None:
+def _call_hook(
+    method: Any, ctx: PredictContext, timeout: Optional[float], lock: Any = None
+) -> None:
     """Call one hook method, running its result if it is awaitable, under an optional timeout."""
     timeout = validate_timeout(timeout)
 
@@ -537,10 +539,18 @@ def _call_hook(method: Any, ctx: PredictContext, timeout: Optional[float]) -> No
             run_coroutine_sync(result)
 
     if timeout is None:
-        invoke()
+        if lock is None:
+            invoke()
+        else:
+            with lock:
+                invoke()
         return
 
     box: List[BaseException] = []
+    deadline = time.monotonic() + timeout
+
+    def timeout_error():
+        return TimeoutError("laya: hook %s exceeded %gs" % (_hook_name(method), timeout))
 
     # Run the hook in a copy of the caller's context, so a `contextvars` value (a request id,
     # a tracing span) set by the caller is visible to the hook even though it runs on another
@@ -548,17 +558,30 @@ def _call_hook(method: Any, ctx: PredictContext, timeout: Optional[float]) -> No
     context = contextvars.copy_context()
 
     def runner():
+        acquired = False
         try:
+            if lock is not None:
+                remaining = deadline - time.monotonic()
+                acquired = remaining > 0 and lock.acquire(timeout=remaining)
+                if not acquired:
+                    raise timeout_error()
+            # A timed-out waiter must not run later when the previous hook finally exits.
+            if time.monotonic() >= deadline:
+                raise timeout_error()
             context.run(invoke)
         except BaseException as exc:  # noqa: BLE001 -- re-raised on the caller thread
             box.append(exc)
+        finally:
+            if acquired:
+                lock.release()
 
     thread = threading.Thread(target=runner, daemon=True, name="laya-hook-timeout")
     thread.start()
-    thread.join(timeout)
+    thread.join(max(0.0, deadline - time.monotonic()))
     if thread.is_alive():
-        # The thread keeps running: Python cannot interrupt it. The timeout bounds the request.
-        raise TimeoutError("laya: hook %s exceeded %gs" % (_hook_name(method), timeout))
+        # The worker owns the lock until the callback actually exits, even after the caller
+        # times out. Releasing it on the caller would let subsequent serial hooks overlap.
+        raise timeout_error()
     if box:
         raise box[0]
 
@@ -576,9 +599,11 @@ def dispatch(
 
     `raise_errors=False` warns and continues, for hooks (telemetry) that must not fail a
     request. `lock` serialises dispatch for hooks that are not safe to run concurrently.
-    `timeout` bounds each hook call in seconds; an overrunning hook raises `TimeoutError`, or
+    `timeout` bounds each hook call, including its lock wait; an overrun raises `TimeoutError`, or
     warns when `raise_errors` is False. Python threads cannot be interrupted, so an overrunning
-    hook keeps running in the background: the timeout protects the request, not the process.
+    hook keeps running in the background and retains the serialization lock until it exits.
+    A hook that times out waiting for the lock is never invoked. The timeout protects the
+    caller's wait, not the process or the mutable context of a hook that already started.
     A hook that returns an awaitable is run to completion before moving on.
     """
     for hook in hooks:
@@ -586,11 +611,7 @@ def dispatch(
         if method is None:
             continue
         try:
-            if lock is not None:
-                with lock:
-                    _call_hook(method, ctx, timeout)
-            else:
-                _call_hook(method, ctx, timeout)
+            _call_hook(method, ctx, timeout, lock=lock)
         except Exception as exc:  # noqa: BLE001 -- policy depends on raise_errors
             if raise_errors:
                 raise
