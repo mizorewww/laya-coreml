@@ -1,65 +1,23 @@
-![Laya Core ML playing Snake with real local model probabilities](https://raw.githubusercontent.com/mizorewww/laya-coreml/main/docs/assets/snake-demo.gif)
-
-Current source targets official Laya **v0.4.17**
-(`fe9a6c35023a7d94102e7feaaeaae8857d9d1b07`); package version remains **0.5.1**.
-This source migration adds language explanations, reliable long-scan attribution
-through hooks, stricter integration/evaluation validation, bounded HTTP body reads
-and configurable remote User-Agent headers. Core ML tensor, artifact, compute-unit,
-compiled-model and shape-cache behavior remains native. See the
-[current migration and validation scope](docs/MIGRATION_0_4_17.md),
-[complete source inventory](docs/UPSTREAM_PORT.json) and
-[public API audit](docs/UPSTREAM_0417_API_AUDIT.json).
-Linux CI passed 386 tests (three macOS-only skips); macOS passed all 389 tests,
-including native conversion/inference. Build and strict Twine checks passed on both
-([CI evidence](https://github.com/Omicron0314/laya-coreml/actions/runs/40825520186)).
-
-No new release is requested. The [0.5.1 release notes](docs/RELEASE_0_5_1.md),
-[six FP16/FP32 bundles](docs/RELEASE_0_5_1.md) and recorded performance below
-remain historical v0.4.12 evidence; they do not qualify this source migration.
-
 # Laya-CoreML
 
-**Open-weight typed decisions on Apple Silicon. Core ML, Neural Engine, zero generated tokens.**
+**Open-weight typed decisions on Apple Silicon: Core ML, Neural Engine, zero generated tokens.**
 
-[PyPI](https://pypi.org/project/laya-coreml/) · [Hugging Face weights](https://huggingface.co/aac6fef/laya-multilingual-coreml-ane) · [中文](https://github.com/mizorewww/laya-coreml/blob/main/README.zh-CN.md)
+[中文](https://github.com/mizorewww/laya-coreml/blob/main/README.zh-CN.md) · [Usage reference](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md) · [Benchmarks](https://github.com/mizorewww/laya-coreml/blob/main/docs/ANE_BENCHMARKS.md) · [PyPI](https://pypi.org/project/laya-coreml/) · [Hugging Face weights](https://huggingface.co/aac6fef/laya-multilingual-coreml-adaptive-fp16) · [Changelog](https://github.com/mizorewww/laya-coreml/blob/main/CHANGELOG.md)
 
-A real Laya model plays Snake locally, with visible probabilities, score, length,
-latency and safety interventions. The GIF replays a recorded Core ML run at **1× speed**.
-The game uses explicit planner features and a visible cycle safety layer.
+Laya answers constrained questions (pick an option, score against a rubric, judge true or
+false) with calibrated probabilities from one bidirectional forward pass. It generates no tokens
+and returns no JSON to parse. This package runs the original [Laya](https://github.com/NandhaKishorM/laya)
+weights as Core ML programs on the CPU, GPU or Neural Engine. Inference needs no PyTorch,
+Transformers or MLX.
 
-The complete active Snake loop sustained **49.1–50.0 decisions/s** across three
-uncapped 600-step episodes, with zero deaths and two safety interventions.
-[Game-loop timings and paced-rate limits](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_BENCHMARKS.md)
-include rendering serialization; terminal painting is excluded.
+**4.98 ms** median for one short multilingual decision on the M3 Max Neural Engine, using
+**2.78× less system energy** than compiled MLX.
 
-**One short multilingual decision: 4.98 ms P50 / 5.31 ms P95 on M3 Max with ANE FP16.**
-The same experiment measured **2.78× better whole-system energy per decision** than
-compiled MLX FP16. A separately validated W8 palette variant reached 4.88 ms and
-3.19× energy improvement. These are single-question results, not full Snake frame
-times; the requested 10× improvement was not achieved.
+![Laya Core ML playing Snake with real local model probabilities](https://raw.githubusercontent.com/mizorewww/laya-coreml/main/docs/assets/snake-demo.gif)
 
-## Run the demo
+## Quick start
 
-Apple Silicon · macOS 15+ · Python 3.11–3.13.
-
-```bash
-pip install 'laya-coreml[demo]'
-hf download aac6fef/laya-multilingual-coreml-ane --local-dir models/snake
-laya-coreml-snake --model ./models/snake
-```
-
-Download once, then play offline. No PyTorch, Transformers or MLX is needed for
-inference. The terminal needs 104 columns × 35 rows. Space pauses; ↑/↓ changes
-speed; R resets; Q quits. First-time Core ML initialization can take tens of seconds.
-
-[Controls, recording and video export](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_DEMO.md)
-· [Measured stable decision rates](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_BENCHMARKS.md)
-· [Shareable video and recording provenance](https://github.com/mizorewww/laya-coreml/blob/main/docs/LAUNCH.md)
-
-## Ask for a decision
-
-The full-context adaptive CPU/GPU bundle supports general batch and long-text use.
-See the [0.5.1 model list and measured performance](docs/RELEASE_0_5_1.md).
+Requires Apple Silicon, macOS 15+ and Python 3.11–3.13.
 
 ```bash
 pip install laya-coreml
@@ -70,211 +28,132 @@ import laya_coreml as laya
 
 agent = laya.load("aac6fef/laya-multilingual-coreml-adaptive-fp16")
 result = agent.predict(
-    "The customer requests a refund of a duplicate payment.",
+    "I was billed twice. Please refund the duplicate.",
     {
+        "department": {
+            "type": "choice",
+            "instructions": "Which department should handle this request?",
+            "criteria": {
+                "billing": "Payments, invoices, refunds, and duplicate charges.",
+                "technical": "Broken features, errors, and product troubleshooting.",
+                "sales": "Pricing, upgrades, and new purchases.",
+            },
+        },
         "refund": {
             "type": "noul",
-            "instructions": "Does the customer request a refund?",
-        }
+            "instructions": "Does the customer ask for money back?",
+        },
     },
 )
-print(result["answers"]["refund"])
+print(result["answers"]["department"]["choice"])  # billing
 ```
 
-Laya returns probabilities for **choice**, ordinal **score**, and boolean **noul**
-questions. There is no autoregressive decoding or generated JSON to parse. Hub
-models download before initialization; subsequent predictions stay local. Pass
-`local_files_only=True` to require an existing cache, or load a local directory.
+Describing each option, as above, works much better than bare labels. The bundle downloads
+before first use; predictions after that are local. Pass
+`local_files_only=True` to forbid network access.
 
-Following upstream v0.3.5, fitted calibration temperatures are clamped to
-`[0.5, 5.0]` before use: the shipped `choice:11+` bucket is 0.1006, which would
-sharpen logits ~10x and report a coin flip as near-certainty. The checkpoint's
-raw values remain available as `agent.temperature_raw` and
-`agent.temperature_by_options_raw`, and a `RuntimeWarning` names every clamped
-bucket at load.
+## Question types
 
-The ANE bundle has a **96-token total limit**, including question, options and
-state. State truncation and long-text scanning use that actual budget; oversized
-question heads or option sets still fail. Use
-`aac6fef/laya-multilingual-coreml` for the general-purpose 1024-token model.
-[Full API, model selection and offline usage](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md).
+| Type | You provide | You get |
+|---|---|---|
+| `choice` | Named options, as a list or a label → description dict | Probability per option |
+| `score` | Ordered rubric levels | Probability per level and the expected level |
+| `noul` | A yes/no proposition | P(true) |
 
-## Measured on M3 Max
+States can be text, JSON-like dicts or conversation lists. Each answer carries calibrated
+probabilities and confidence fields; confidence does not guarantee accuracy on a new task.
 
-Performance figures below come from the linked original benchmark runs. Version
-0.4.0 validates fidelity; it makes no new throughput or energy claim.
+## Model bundles
 
-40-core GPU, 128 GiB, macOS 27.2. One 91-token question padded to 96, including
-prompt preparation, tokenization, arrays, synchronous inference, calibration and
-formatting. Loading and warmup are excluded. MLX enables compile, prefix caching
-and shape buckets. Six alternating 20-second blocks per implementation produced
-**65,598 stable calls**.
+All bundles are under [`aac6fef/`](https://huggingface.co/aac6fef) on Hugging Face.
 
-| Metric | Compiled MLX FP16 | Core ML ANE FP16 | Core ML ANE W8 |
+| Bundle | Engine | Capacity | Use |
+|---|---|---|---|
+| `laya-multilingual-coreml-adaptive-fp16` (also `-fp32`) | CPU + GPU | 1,024 tokens, native batch 1/2/4/16 | **Recommended** general multilingual model |
+| `laya-coreml-adaptive-fp16` / `-fp32` | CPU + GPU | 512 tokens, native batch 1/2/4/16 | English, 421M |
+| `laya-typed-decisions-coreml-adaptive-fp16` / `-fp32` | CPU + GPU | 1,024 tokens, native batch 1/2/4/16 | Upstream typed-decisions workflows |
+| `laya-coreml`, `laya-multilingual-coreml`, `laya-typed-decisions-coreml` | CPU + GPU | 512 / 1,024 tokens, batch 1 | Original single-graph bundles; `Router()` defaults |
+| `laya-multilingual-coreml-ane` | CPU + Neural Engine | 96 tokens total, batch 1 | Fastest short decisions, FP16 |
+| `laya-multilingual-coreml-ane-w8` | CPU + Neural Engine | 96 tokens total, batch 1 | Approximate 8-bit palette weights |
+| `laya-multilingual-coreml-snake` | CPU + GPU | 64 tokens, batch 3 | The Snake demo's three questions |
+
+The ANE bundles' 96-token limit covers question, options and state together. Longer state is
+truncated, while oversized questions or option sets raise. Every bundle includes its tokenizer,
+model card, provenance, checksums and validation results.
+[Choosing a bundle, pinned revisions and offline use](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md#select-a-model).
+
+## What else it does
+
+All of these are covered in the [usage reference](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md):
+
+- **Language routing:** `Router()` detects the language, picks a bundle and keeps up to two resident. You can register your own bundles.
+- **Batches and long documents:** `predict_batch` and `predict_long`, with answer attribution across windows.
+- **Confidence gate:** `min_confidence=` marks low-confidence answers for review without changing them.
+- **Large choice sets:** `predict_tournament` (no embedder) or `predict_shortlist` with your own embedding function.
+- **Compute units:** `compute_units="cpu_gpu" | "cpu_ne" | "cpu" | "all"` overrides a bundle's default engine.
+- **Tools and services:** CLI (`laya-coreml predict`), HTTP (`laya-coreml-serve`), MCP (`laya-coreml-mcp-server`), evaluation and calibration, and LangChain/LlamaIndex/CrewAI/Agno integrations, installed as extras.
+- **Conversion:** `pip install 'laya-coreml[convert]'` then `laya-coreml convert` exports your own bundle.
+
+## Performance
+
+M3 Max (40-core GPU, 128 GiB). One 91-token question padded to 96, end to end, from 65,598 stable
+calls in alternating 20-second blocks:
+
+| | Compiled MLX FP16 | Core ML ANE FP16 | Core ML ANE W8 |
 |---|---:|---:|---:|
 | P50 / P95 | 6.94 / 7.39 ms | **4.98 / 5.31 ms** | **4.88 / 5.23 ms** |
-| Mean system power estimate | 61.39 W | 30.75 W | 27.39 W |
-| System energy / decision | 0.4288 J | **0.1540 J** | **0.1344 J** |
-| Speed gain | 1× | **1.39×** | **1.42×** |
-| System energy gain | 1× | **2.78×** | **3.19×** |
+| System energy per decision | 0.4288 J | **0.1540 J** | **0.1344 J** |
+| Speed / energy vs MLX | 1× / 1× | **1.39× / 2.78×** | **1.42× / 3.19×** |
 
-Energy uses direct SMC PSTR sensor readings, with raw samples and explicit anomaly
-rejection. This is an estimate with sensor and background-load uncertainty.
-**Speed gain × average power ratio = energy gain**; multiplying energy by speed
-again would double-count time. The W8 variant compresses weights while retaining
-FP16 compute. It is approximate, and its package-size reduction is not a speed ratio.
+Timings include prompt preparation, tokenization, inference, calibration and formatting; loading
+and warm-up are excluded. Energy comes from SMC power-sensor readings and is an estimate. The ANE
+advantage is for short inputs: a 1,024-token ANE graph takes about 91.7 ms, and a full Snake game
+is not consistently faster than compiled MLX.
+[Speed, energy and hardware evidence](https://github.com/mizorewww/laya-coreml/blob/main/docs/ANE_BENCHMARKS.md) ·
+[CPU/GPU benchmarks](https://github.com/mizorewww/laya-coreml/blob/main/BENCHMARKS.md).
 
-[Speed, energy and hardware evidence](https://github.com/mizorewww/laya-coreml/blob/main/docs/ANE_BENCHMARKS.md)
-· [Raw measurements](https://github.com/mizorewww/laya-coreml/tree/main/benchmarks/results).
+**Port fidelity:** the general bundles match upstream's selected answer on all 63 validation
+questions per checkpoint in FP32 and FP16, with 100 stable repeated calls each. The ANE FP16
+bundle matches all 59 questions that fit in 96 tokens. These are conversion-fidelity checks, not
+task accuracy.
 
-## Available checkpoints
+## Snake demo
 
-| Hugging Face bundle | Default engine | Capacity | Purpose |
-|---|---|---:|---|
-| [Laya 421M](https://huggingface.co/aac6fef/laya-coreml) | CPU + GPU | 512 tokens | Original English model |
-| [Multilingual 322M](https://huggingface.co/aac6fef/laya-multilingual-coreml) | CPU + GPU | 1024 tokens | General multilingual decisions |
-| [Typed Decisions 421M](https://huggingface.co/aac6fef/laya-typed-decisions-coreml) | CPU + GPU | 1024 tokens | Original specialized checkpoint |
-| [Snake GPU](https://huggingface.co/aac6fef/laya-multilingual-coreml-snake) | CPU + GPU | B3 / L64 | Batches the three compact game questions |
-| [Multilingual ANE](https://huggingface.co/aac6fef/laya-multilingual-coreml-ane) | CPU + ANE | B1 / L96 | Short decisions, FP16 |
-| [Multilingual ANE W8](https://huggingface.co/aac6fef/laya-multilingual-coreml-ane-w8) | CPU + ANE | B1 / L96 | Optional approximate palette compression |
-
-Every bundle includes tokenizer/configuration, model card, provenance, checksums
-and packaging-time validation. ANE bundles also include the exact original host
-embedding/action tensors they need. No original training checkout is required.
-
-## Port fidelity and limits
-
-The three general-purpose FP16 checkpoints match upstream selected answers on
-**189/189 validation questions**. Each passes 100 repeated calls. ANE FP16 L96
-passes **59/59 fitting questions**, with maximum calibrated-probability drift
-0.002925; W8 passes the same subset with drift 0.014393 under an unchanged 0.02
-gate. Six- and four-bit experiments failed that gate and are not published weights.
-These are conversion-fidelity fixtures, not proof of general task accuracy.
-
-A separately exported FP16 ANE L1024 graph passes the complete **63/63** fixture,
-but an actual 1024-token request takes about **91.7 ms** in its serial screen.
-The short ANE result does not establish a long-context advantage. A 600-step
-paired Snake check matches **600/600 actions**, with zero deaths and zero shield
-interventions; the current ANE adapter's three sequential calls do not establish
-a consistent full-game speedup over compiled MLX.
-
-The ordinary SDPA Core ML export and the ANE graph are different implementations.
-The ordinary export defaults to CPU+GPU after unrestricted RangeDim GPU shapes
-failed local fidelity checks. Changing its device setting alone does not reproduce
-the ANE result. The ANE rewrite uses BC1L activations, 1×1 projections and per-head
-attention; its plan and a separate Instruments trace support Neural Engine work.
-CPU still handles input/output boundaries.
-
-## Documentation and reproducibility
-
-- [Install and Python/CLI API](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md)
-- [Snake demo and media](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_DEMO.md)
-- [Release artifacts and pinned Hub revisions](https://github.com/mizorewww/laya-coreml/blob/main/docs/RELEASE.md)
-- [General Core ML benchmarks](https://github.com/mizorewww/laya-coreml/blob/main/BENCHMARKS.md)
-- [ANE engineering experiments](https://github.com/mizorewww/laya-coreml/blob/main/docs/ANE_ENGINEERING.md)
-- [Mathematical investigation of the 10× target](https://github.com/mizorewww/laya-coreml/blob/main/docs/ANE_MATH.md)
-- [Conversion issues and supported shapes](https://github.com/mizorewww/laya-coreml/blob/main/docs/CONVERSION.md)
-
-To export yourself, install `laya-coreml[convert]` and run
-`laya-coreml convert laya-multilingual models/custom`. ANE research conversion,
-compression and benchmark scripts live in the Git checkout. The inference wheel
-contains the portable runtime and optional terminal demo.
-
-Apache-2.0. Independent port of [Laya](https://github.com/NandhaKishorM/laya), by
-Convai Innovations and contributors, building on the [MLX sibling project](https://github.com/mizorewww/laya-mlx).
-Not an official Convai Innovations or Apple release. See
-[NOTICE](https://github.com/mizorewww/laya-coreml/blob/main/NOTICE).
-
-
-## Previous v0.4.1 host compatibility (v0.4.0 record)
-
-The previous migration ported host behavior directly from upstream `1adc59f` to Core ML. Model
-weights remain separate downloads. The runtime still needs no PyTorch, Transformers,
-or MLX. Optional temperature fitting and conversion use PyTorch; training uses official Laya.
-[Migration and complete compatibility scope](https://github.com/mizorewww/laya-coreml/blob/main/docs/MIGRATION_0_4.md).
-
-```python
-import laya_coreml as laya
-
-router = laya.Router(max_loaded=2)
-result = router.predict(state, questions, min_confidence=0.7)
-router.register("local", "./models/my-coreml-bundle", description="Custom classifier")
-result = router.predict(state, questions, model="local")
-router.unload("local")
-router.unregister("local")
-```
-
-`Router()` uses the published English, multilingual and typed-decisions **Core ML**
-bundles. It defaults to two resident models and to multilingual when the language is undecided. Use
-`Router(default="english")` to choose English as the fallback. `route()` inspects a
-request without loading weights; explicit `model`, `task`, and `lang` override
-inference from the input. Automatic typed-workflow detection is opt-in through
-`auto_task_detection=True`. Language detection includes the upstream acronym,
-capitalization and mixed-script fixes.
-
-Pass `models={"custom": "./bundle"}` at construction, or use `register`, `registered`,
-`attach`, `preload`, and `unload`. Sources are local Core ML bundles or Hub repository
-IDs. `compute_units`, `revision`, and `local_files_only` are passed to bundle loading.
-An attached ANE bundle uses its usual CPU+NE default when `compute_units` is omitted.
-Resident-model access and status reads remain available during a cold load; duplicate
-loads share construction. Replacing/unregistering a source waits for its in-flight build, then removes the
-old resident entry, following official synchronization. Unload drops router references without invalidating
-agents held by callers or ongoing predictions. Core ML manages native caches; the
-router collects unreachable Python objects and never deletes cached model files.
-
-`Agent`, `ANEAgent`, and `Router` accept `min_confidence=0.7` or a bucket mapping such
-as `{"choice:2": 0.8, "choice:3-5": 0.7, "default": 0.6}`. Answers gain `abstention`,
-`abstention_threshold`, and, when below threshold, `low_confidence`. The gate preserves
-the answer and does not automatically call a fallback. Shipped confidence values
-still require held-out calibration for any correctness-probability interpretation.
-
-```python
-result = laya.predict_tournament(router, state, questions, group_size=16)
-# Optional external embedder: maps a list of strings to an (N, D) numeric array.
-result = laya.predict_shortlist(router, state, questions, embed_fn, k=16)
-```
-
-Tournament elimination handles large choice sets without an embedding model.
-`result["tournament"]` records finalists, original counts, and rounds. Probabilities
-and usage describe the **final pass only**. Choose `group_size` / shortlist `k` within
-the bundle's exported option capacity. `shortlist_choice` is also available for
-caller-managed ranking; the Core ML graph does not expose an encoder embedder.
-
-Email helpers (`laya_coreml.email.clean_email_body`, `email_state`, `email_questions`)
-include English, Portuguese, Spanish and French cleanup, including the French device
-footer fix. Cleaning is explicit and never silently applied to ordinary input.
-
-### Parallel option layout
-
-The converter supports checkpoints trained with `"option_layout": "parallel"`:
-shared option positions, option-isolating encoder masks, local attention measured in
-position IDs, and the position-free decision head. Preparation, fixed/enumerated
-shapes, conversion and runtime use matching `position_ids` and `option_ids` inputs.
-Missing configuration means `sequential`; unknown layouts and configuration/export
-mismatches raise an error. **Do not switch an existing bundle to parallel by editing
-its JSON**: the graph and trained weights must match the layout.
-
-FP32 and FP16 exports are tested on CPU and CPU+GPU, with varying input lengths and
-option order, against upstream v0.4.1. Legacy ANE exports have sequential RoPE baked
-into the graph and reject parallel configurations; use the general `convert` path
-for parallel checkpoints. Existing ANE packages receive the shared prompt, gating,
-routing and decision-helper features without requiring reconversion. No new parallel
-pretrained weights or parallel ANE acceleration claim is made by this release.
-
-Validation covers all 24 permutations of four options, a sequential sensitivity
-control, pinned upstream numerical parity, real Core ML export/load execution,
-registry races, routing and helper semantics. CI runs portable tests on Linux and
-actual Core ML tests on macOS. Reproduce with:
+The GIF above replays a recorded Core ML run at 1× speed, with live probabilities, latency and a
+visible safety layer.
 
 ```bash
-uv sync --extra convert --extra dev --extra demo --extra publish --extra reference
-# Check out upstream 1adc59f into .upstream for reference parity.
-uv run --no-sync pytest -q
+pip install 'laya-coreml[demo]'
+hf download aac6fef/laya-multilingual-coreml-ane --local-dir models/snake
+laya-coreml-snake --model ./models/snake
 ```
 
-The three general-purpose bundles match all 189/189 selected answers from the
-original FP32 golden fixture. The fixed L96 ANE bundle matches all 59/59 questions
-that fit its capacity (four long questions are excluded). Each bundle passes 100
-identical repeated calls: 248/248 agreements and 400 stability calls in total.
-This measures port fidelity on the fixture, not general task accuracy.
-See [the release validation report](benchmarks/results/official-host-v040-validation.json).
+The terminal must be at least 104 × 35. Space pauses, ↑/↓ changes speed, R resets, Q quits. First
+Core ML initialization can take tens of seconds. The full loop sustained **49.1–50.0 decisions/s**
+over three uncapped 600-step episodes with zero deaths.
+[Demo guide](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_DEMO.md) ·
+[measured rates](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_BENCHMARKS.md).
+
+## Relationship to upstream
+
+This is an independent port, not an official Convai Innovations or Apple release. Prompt
+formatting, calibration, routing, output schema and host APIs follow
+[NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.4.17**. Only the tensor, artifact,
+device and resource layers are Core ML-specific. Core ML bundles do not expose encoder embeddings,
+and training stays upstream. A sibling port for MLX is
+[laya-mlx](https://github.com/mizorewww/laya-mlx).
+[Native boundaries](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md#upstream-compatibility) ·
+[v0.4.17 migration record](https://github.com/mizorewww/laya-coreml/blob/main/docs/MIGRATION_0_4_17.md) ·
+[all documentation](https://github.com/mizorewww/laya-coreml/blob/main/docs/README.md).
+
+## Contributing
+
+Bug reports and pull requests are welcome. Host behavior must stay traceable to upstream. See
+[CONTRIBUTING.md](https://github.com/mizorewww/laya-coreml/blob/main/CONTRIBUTING.md) for the
+development setup, tests, conversion and release process.
+
+## License
+
+Apache-2.0; see [LICENSE](https://github.com/mizorewww/laya-coreml/blob/main/LICENSE) and
+[NOTICE](https://github.com/mizorewww/laya-coreml/blob/main/NOTICE). Laya and its pretrained weights
+are by Convai Innovations and upstream contributors.

@@ -3,7 +3,10 @@
 The current source target is official Laya **v0.4.17**,
 `fe9a6c35023a7d94102e7feaaeaae8857d9d1b07`, replacing v0.4.12
 `ffc142012af63d015fa19f05f29f9c5ff329a2cc` on Core ML base `7b36334`.
-Package version remains **0.5.1**. No release is requested or qualified by this migration.
+It ships in **0.6.0** ([changelog](../CHANGELOG.md)); the evidence below was recorded on the 0.5.1
+source tree before the version bump. For 0.6.0, the three published adaptive FP16 bundles were
+re-checked against the v0.4.12 FP32 golden fixture: 63/63 selected answers, complete public outputs
+and 100 stable calls each.
 
 The source delta contains 26 Python files, 1,038 additions and 166 deletions.
 Twenty-four files have applicable host changes. The upstream version bump and
@@ -31,7 +34,7 @@ and deployment artifacts are outside this Python inference port.
   token budgets apply even when callers specify a batch size. Invalid tournament
   labels return 422.
 - `RemoteRouter(user_agent=...)` or `LAYA_USER_AGENT` supplies a validated Latin-1
-  User-Agent. The default uses this distribution's version, `laya/0.5.1`.
+  User-Agent. The default uses this distribution's version, for example `laya/0.6.0`.
 - Router CLI question/batch files and evidence readers accept UTF-8 BOMs and report
   paths on read, JSON, encoding or nesting failures. Evaluation validates row shape,
   result cardinality and exact requested metrics. Invalid calibration targets and

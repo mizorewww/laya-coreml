@@ -1,48 +1,118 @@
-![Laya Core ML 在本机玩贪吃蛇](https://raw.githubusercontent.com/mizorewww/laya-coreml/main/docs/assets/snake-demo.gif)
-
 # Laya-CoreML
 
-**在 Apple Silicon 上运行开放权重的决策模型：Core ML、Neural Engine、零输出 token。**
+**开放权重的类型化决策模型，跑在 Apple Silicon 上：Core ML、神经网络引擎，不生成任何 token。**
 
-[PyPI](https://pypi.org/project/laya-coreml/) · [Hugging Face](https://huggingface.co/aac6fef/laya-multilingual-coreml-ane) · [English](https://github.com/mizorewww/laya-coreml)
+[English](https://github.com/mizorewww/laya-coreml/blob/main/README.md) · [使用参考](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md) · [基准测试](https://github.com/mizorewww/laya-coreml/blob/main/docs/ANE_BENCHMARKS.md) · [PyPI](https://pypi.org/project/laya-coreml/) · [Hugging Face 权重](https://huggingface.co/aac6fef/laya-multilingual-coreml-adaptive-fp16) · [更新日志](https://github.com/mizorewww/laya-coreml/blob/main/CHANGELOG.md)
 
-上面的贪吃蛇由真实 Core ML 推理驱动，显示方向概率、分数、蛇长、延迟和安全层接管次数。
-GIF 保持录制时的 **1× 速度**。代码提供确定性的路径特征和可见的循环安全层，模型负责给出概率。
+Laya 专门回答有固定答案范围的问题：从几个选项里挑一个、按评分标准打分、判断一句话真不真。
+它只做一次双向前向计算，直接给出校准后的概率，不逐个生成 token，也不需要解析输出的 JSON。
+本项目把 [Laya](https://github.com/NandhaKishorM/laya) 原版权重转成 Core ML 程序，可在 CPU、GPU
+或神经网络引擎（ANE）上运行；推理不依赖 PyTorch、Transformers 或 MLX。
 
-完整游戏循环在三个种子、各 600 步的不限速测试中达到 **49.1–50.0 步/秒**，零死亡、两次安全层干预。
-包含终端内容生成和序列化，排除终端窗口自身绘制；[定时模式限制与完整数据](docs/SNAKE_BENCHMARKS.md) 均已公开。
+在 M3 Max 的神经网络引擎上，一个简短的多语言问题中位延迟 **4.98 ms**，
+系统能耗比编译后的 MLX **低 2.78 倍**。
 
-**M3 Max 上，ANE FP16 单个短问题 P50 4.98 ms / P95 5.31 ms。**
-同场测试中，每次决策的整机能耗比编译后的 MLX 改善 **2.78 倍**。
-单独验证的 8-bit 版本为 4.88 ms、3.19 倍能效改善。**十倍目标尚未达到。**
-这些数字是单问题 API 的结果，不能当成完整贪吃蛇的每帧耗时。
+![Laya Core ML 玩贪吃蛇，实时显示本地模型概率](https://raw.githubusercontent.com/mizorewww/laya-coreml/main/docs/assets/snake-demo.gif)
 
-## 当前源码：对齐上游 v0.4.17，包版本保持 0.5.1
+## 快速开始
 
-当前源码固定对齐 `fe9a6c35023a7d94102e7feaaeaae8857d9d1b07`。
-新增 `detect_language(..., explain=True)`、`Router.route/route_batch(..., explain=True)`
-以及 `laya-coreml-router --explain`，提供语言判断理由与有限的来源路径。
-长文本扫描在结束 hook 重排答案后仍保留原始窗口；复制、修改或跨窗口共享的答案不再标注错误窗口。
-可靠性校准保留 NumPy 数值精度；集成、评测和文件读取加强输入验证。
-HTTP 请求体默认限时 10 秒（`LAYA_BODY_READ_TIMEOUT`），启用 API key 时关闭文档接口；
-显式批量大小仍受 token 预算限制。远程请求支持 `LAYA_USER_AGENT` 或 `user_agent=`。
+需要 Apple Silicon、macOS 15+ 和 Python 3.11–3.13。
 
-Core ML 张量、模型文件、`compute_units`、编译模型和形状缓存边界保持原有实现。
-完整变更、测试范围和限制见[迁移说明](docs/MIGRATION_0_4_17.md)、
-[26 项源文件清单](docs/UPSTREAM_PORT.json)和[当前 API 审计](docs/UPSTREAM_0417_API_AUDIT.json)。
-本次 [CI](https://github.com/Omicron0314/laya-coreml/actions/runs/40825520186) 中，Linux 通过 386 项测试、跳过 3 项 macOS 专用测试；macOS 的 389 项全部通过，包含原生转换与推理。两边的构建及 Twine 严格检查均通过。完整真实模型的稳定性、性能和能耗基准未重跑；此次未请求发布。
-原有[0.5.1 发布说明](docs/RELEASE_0_5_1.md)、六个自适应 FP16/FP32 模型以及
-[历史验收证据](docs/UPSTREAM_0412_PROGRESS.json)仍对应 v0.4.12，不代表此次源码已通过同等验收。
+```bash
+pip install laya-coreml
+```
 
-Core ML 支持按 B=1/2/4/16 组合本地模型包，并为额外输入形状保留有上限的执行实例。
-首个形状复用已有实例；长尾形状按使用频率接纳，避免反复重载。`shape_cache_size=0`
-可关闭额外缓存；默认最多 4 个额外实例，代价是更多常驻内存。相同精度比较应显式导出
-FP32；已有 Hub 模型包不会自动变成新的多图包。复现步骤见[转换说明](docs/CONVERSION.md)。
-下方旧的 ANE、游戏与发行版数字仍对应各自记录的版本。
+```python
+import laya_coreml as laya
 
-## 安装后直接演示
+agent = laya.load("aac6fef/laya-multilingual-coreml-adaptive-fp16")
+result = agent.predict(
+    "I was billed twice. Please refund the duplicate.",
+    {
+        "department": {
+            "type": "choice",
+            "instructions": "Which department should handle this request?",
+            "criteria": {
+                "billing": "Payments, invoices, refunds, and duplicate charges.",
+                "technical": "Broken features, errors, and product troubleshooting.",
+                "sales": "Pricing, upgrades, and new purchases.",
+            },
+        },
+        "refund": {
+            "type": "noul",
+            "instructions": "Does the customer ask for money back?",
+        },
+    },
+)
+print(result["answers"]["department"]["choice"])  # billing
+```
 
-需要 Apple Silicon、macOS 15+、Python 3.11–3.13。
+像上面这样给每个选项写上说明，效果远好于只给标签名。首次使用前会下载模型包，之后的预测都在本地完成。传入 `local_files_only=True` 可禁止联网。
+
+## 问题类型
+
+| 类型 | 你提供 | 你得到 |
+|---|---|---|
+| `choice` | 若干选项：列表，或「标签 → 说明」字典 | 每个选项的概率 |
+| `score` | 有序的评分档位 | 每档的概率和期望档位 |
+| `noul` | 一个是非命题 | 为真的概率 |
+
+输入状态可以是文本、类 JSON 字典或对话列表。每个答案都附带校准概率和置信度；
+在新任务上，置信度高不代表一定答对。
+
+## 模型包
+
+所有模型包都在 Hugging Face 的 [`aac6fef/`](https://huggingface.co/aac6fef) 下。
+
+| 模型包 | 计算单元 | 容量 | 用途 |
+|---|---|---|---|
+| `laya-multilingual-coreml-adaptive-fp16`（另有 `-fp32`） | CPU + GPU | 1,024 token，原生批量 1/2/4/16 | **推荐**的通用多语言模型 |
+| `laya-coreml-adaptive-fp16` / `-fp32` | CPU + GPU | 512 token，原生批量 1/2/4/16 | 英文，421M |
+| `laya-typed-decisions-coreml-adaptive-fp16` / `-fp32` | CPU + GPU | 1,024 token，原生批量 1/2/4/16 | 上游 typed-decisions 工作流 |
+| `laya-coreml`、`laya-multilingual-coreml`、`laya-typed-decisions-coreml` | CPU + GPU | 512 / 1,024 token，批量 1 | 原始单图模型包，`Router()` 默认使用 |
+| `laya-multilingual-coreml-ane` | CPU + 神经网络引擎 | 总共 96 token，批量 1 | 短问题最快，FP16 |
+| `laya-multilingual-coreml-ane-w8` | CPU + 神经网络引擎 | 总共 96 token，批量 1 | 近似 8 位调色板压缩权重 |
+| `laya-multilingual-coreml-snake` | CPU + GPU | 64 token，批量 3 | 贪吃蛇演示的三个问题 |
+
+ANE 模型包的 96 token 上限把问题、选项和状态算在一起：状态过长会被截断，问题或选项超长则直接报错。
+每个模型包都带有分词器、模型卡、来源说明、校验和与验证结果。
+[如何选择模型包、固定版本与离线使用](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md#select-a-model)。
+
+## 其他功能
+
+详见[使用参考](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md)：
+
+- **语言路由**：`Router()` 自动识别语言、选择模型包，默认最多常驻两个；也可以注册自己的模型包。
+- **批量与长文档**：`predict_batch` 与 `predict_long`，长文本扫描会保留答案出自哪一段。
+- **置信度门槛**：`min_confidence=` 把低置信度答案标记出来供人工复核，答案本身不变。
+- **超多选项**：`predict_tournament`（分组淘汰，不需要嵌入模型），或配合自备嵌入函数使用 `predict_shortlist`。
+- **计算单元**：`compute_units="cpu_gpu" | "cpu_ne" | "cpu" | "all"` 可覆盖模型包的默认设置。
+- **工具与服务**：命令行（`laya-coreml predict`）、HTTP（`laya-coreml-serve`）、MCP（`laya-coreml-mcp-server`）、评估与校准，以及 LangChain/LlamaIndex/CrewAI/Agno 集成，按需安装 extras。
+- **转换**：`pip install 'laya-coreml[convert]'` 后用 `laya-coreml convert` 导出自己的模型包。
+
+## 性能
+
+M3 Max（40 核 GPU，128 GiB）。单个 91 token 的问题补齐到 96，端到端计时，
+数据来自交替进行的 20 秒测试块，共 65,598 次稳定调用：
+
+| | 编译后的 MLX FP16 | Core ML ANE FP16 | Core ML ANE W8 |
+|---|---:|---:|---:|
+| P50 / P95 | 6.94 / 7.39 ms | **4.98 / 5.31 ms** | **4.88 / 5.23 ms** |
+| 每次决策的系统能耗 | 0.4288 J | **0.1540 J** | **0.1344 J** |
+| 相对 MLX 的速度 / 能效 | 1× / 1× | **1.39× / 2.78×** | **1.42× / 3.19×** |
+
+计时包含提示词构造、分词、推理、校准和结果格式化，不含加载与预热。能耗来自 SMC 功率传感器读数，
+属于估算。ANE 的优势仅限短输入：1,024 token 的 ANE 图一次约 91.7 ms，完整的贪吃蛇游戏也不稳定地快于编译后的 MLX。
+[速度、能耗与硬件证据](https://github.com/mizorewww/laya-coreml/blob/main/docs/ANE_BENCHMARKS.md) ·
+[CPU/GPU 基准](https://github.com/mizorewww/laya-coreml/blob/main/BENCHMARKS.md)。
+
+**移植忠实度**：通用模型包在 FP32 和 FP16 下，每个模型的 63 道验证题都与上游选出相同答案，
+每种组合重复调用 100 次结果稳定。ANE FP16 模型包在能放进 96 token 的 59 道题上全部一致。
+这些检验衡量的是转换是否忠实，不是任务准确率。
+
+## 贪吃蛇演示
+
+上面的 GIF 以 1 倍速回放一次真实的 Core ML 运行，画面上能看到实时概率、延迟和安全层的干预。
 
 ```bash
 pip install 'laya-coreml[demo]'
@@ -50,112 +120,28 @@ hf download aac6fef/laya-multilingual-coreml-ane --local-dir models/snake
 laya-coreml-snake --model ./models/snake
 ```
 
-下载一次后即可离线运行。推理不依赖 PyTorch、Transformers 或 MLX。
-终端至少需要 104 列 × 35 行。空格暂停，上下箭头调速，R 重开，Q 退出。
-首次 Core ML 加载和编译可能需要几十秒；默认 12 步/秒便于看清概率变化。
+终端至少 104 × 35。空格暂停，↑/↓ 调速，R 重开，Q 退出。Core ML 首次初始化可能要几十秒。
+完整游戏循环在三局不限速的 600 步对局中保持 **每秒 49.1–50.0 次决策**，零死亡。
+[演示说明](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_DEMO.md) ·
+[实测速率](https://github.com/mizorewww/laya-coreml/blob/main/docs/SNAKE_BENCHMARKS.md)。
 
-[操作、录制与视频导出](docs/SNAKE_DEMO.md) · [稳定速度测试](docs/SNAKE_BENCHMARKS.md) · [发布素材](docs/LAUNCH.md)
+## 与上游的关系
 
-## Python 调用
+这是独立移植，不是 Convai Innovations 或 Apple 的官方发布。提示词格式、校准、路由、输出结构和主机侧 API
+跟随 [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.4.17**，只有张量、模型包、
+设备和资源这几层是 Core ML 专有的。Core ML 模型包不提供编码器嵌入，训练请使用上游项目。
+MLX 版本见姊妹项目 [laya-mlx](https://github.com/mizorewww/laya-mlx)。
+[原生边界](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md#upstream-compatibility) ·
+[v0.4.17 迁移记录](https://github.com/mizorewww/laya-coreml/blob/main/docs/MIGRATION_0_4_17.md) ·
+[全部文档](https://github.com/mizorewww/laya-coreml/blob/main/docs/README.md)。
 
-```python
-import laya_coreml as laya
+## 参与贡献
 
-agent = laya.load("aac6fef/laya-multilingual-coreml-adaptive-fp16")
-result = agent.predict(
-    "客户要求退还重复扣除的款项。",
-    {
-        "refund": {
-            "type": "noul",
-            "instructions": "Does the customer request a refund?",
-        }
-    },
-)
-print(result["answers"]["refund"])
-```
+欢迎提 issue 和 PR。主机侧行为必须能追溯到上游。开发环境、测试、转换和发版流程见
+[CONTRIBUTING.md](https://github.com/mizorewww/laya-coreml/blob/main/CONTRIBUTING.md)。
 
-支持 `choice`、有序 `score` 和布尔 `noul`；直接返回概率，不逐 token 生成文本。
-远程模型 ID 首次会下载；`local_files_only=True` 强制只使用已有缓存，也可以直接传本地目录。
+## 许可证
 
-跟随上游 v0.3.5，校准温度在使用前会被钳制到 `[0.5, 5.0]`：检查点自带的 `choice:11+` 桶为 0.1006，
-会把 logits 锐化约 10 倍，将接近随机的答案报告成近乎确定。原始值仍可通过 `agent.temperature_raw`
-和 `agent.temperature_by_options_raw` 查看，加载时会对每个被钳制的桶发出 `RuntimeWarning`。
-ANE 快速版本的 **96-token 总预算包括问题、选项和状态**，超出会报错。
-需要更长输入时使用 `aac6fef/laya-multilingual-coreml` 的 1024-token 通用模型。
-[完整 API 和模型选择](docs/USAGE.md)。
-
-## 性能与精度
-
-M3 Max（40 核 GPU、128 GiB），macOS 27.2。相同短问题，MLX 开启 compile、提示词缓存和长度档位。
-每组六个 20 秒区间交替执行，共 **65,598 次稳定调用**。包含分词、输入准备、同步推理和结果格式化，排除加载与预热。
-
-| 指标 | 编译后的 MLX FP16 | ANE FP16 | ANE 8-bit |
-|---|---:|---:|---:|
-| P50 / P95 | 6.94 / 7.39 ms | **4.98 / 5.31 ms** | **4.88 / 5.23 ms** |
-| 平均整机功率估计 | 61.39 W | 30.75 W | 27.39 W |
-| 每次决策整机能耗 | 0.4288 J | 0.1540 J | 0.1344 J |
-| 速度提升 | 1× | **1.39×** | **1.42×** |
-| 每次决策能效改善 | 1× | **2.78×** | **3.19×** |
-
-功耗直接读取 SMC PSTR 整机传感器，保留原始样本并拒绝异常整轮；存在传感器与后台应用误差。
-速度比乘以平均功率比等于每次决策能效改善，不能把能耗比再乘一次速度。
-8-bit 压缩的是权重，计算仍用 FP16；模型主体包缩小不等于同比例提速。
-
-三个通用 FP16 模型共 **189/189** 个验证问题与原版选项一致，各完成 100 次稳定重复调用。
-ANE FP16 L96 通过 **59/59**，最大校准概率偏差 0.002925；W8 同一子集偏差 0.014393，
-通过既定 0.02 门槛。6-bit / 4-bit 没有通过门槛，未作为发布权重上传。
-这些数字验证移植一致性，不代表任意任务的正确率。
-
-独立导出的 ANE FP16 L1024 通过完整 **63/63**，但真正 1024-token 请求耗时约 **91.7 ms**，
-没有显示出长上下文加速优势。ANE Snake 对照通过 600/600 动作一致、零死亡、零接管；
-当前每步串行回答三个问题，完整决策没有显示出稳定加速，不能宣传为约 5 ms 一帧。
-
-[完整速度/能耗报告](docs/ANE_BENCHMARKS.md) · [通用 Core ML benchmark](BENCHMARKS.md) · [原始数据](benchmarks/results)
-
-## 六个可直接下载的模型包
-
-| Hugging Face 模型 | 默认引擎 | 总长度 / batch |
-|---|---|---|
-| [laya-coreml](https://huggingface.co/aac6fef/laya-coreml) | CPU + GPU | 512 / 1 |
-| [laya-multilingual-coreml](https://huggingface.co/aac6fef/laya-multilingual-coreml) | CPU + GPU | 1024 / 1 |
-| [laya-typed-decisions-coreml](https://huggingface.co/aac6fef/laya-typed-decisions-coreml) | CPU + GPU | 1024 / 1 |
-| [laya-multilingual-coreml-snake](https://huggingface.co/aac6fef/laya-multilingual-coreml-snake) | CPU + GPU | 64 / 3 |
-| [laya-multilingual-coreml-ane](https://huggingface.co/aac6fef/laya-multilingual-coreml-ane) | CPU + ANE | 96 / 1 |
-| [laya-multilingual-coreml-ane-w8](https://huggingface.co/aac6fef/laya-multilingual-coreml-ane-w8) | CPU + ANE | 96 / 1 |
-
-每个包包含模型卡、配置、tokenizer、校验和、来源和打包后验证。ANE 包自带所需的原始 embedding
-与 action head 张量，无需原始训练仓库。普通 SDPA 导出和专门改写的 ANE 图是不同路径；
-仅修改普通模型的 compute units 不会自动获得 ANE 快速路径。
-
-## 文档
-
-- [安装、Python 与 CLI](docs/USAGE.md)
-- [贪吃蛇演示和录制](docs/SNAKE_DEMO.md)
-- [发布版本和固定模型 revision](docs/RELEASE.md)
-- [ANE 工程实现](docs/ANE_ENGINEERING.md)
-- [十倍目标的数学调查](docs/ANE_MATH.md)
-- [转换问题与修复](docs/CONVERSION.md)
-
-代码采用 Apache-2.0。原始 [Laya](https://github.com/NandhaKishorM/laya) 模型由 Convai Innovations
-及贡献者发布；本项目基于 [laya-mlx](https://github.com/mizorewww/laya-mlx) 完成独立 Core ML 移植。
-这不是 Convai Innovations 或 Apple 官方发行版，归属见 [NOTICE](NOTICE)。
-
-
-## 之前的 v0.4.0 迁移记录：以官方行为为准
-
-本版直接迁移官方 Laya v0.4.1（`1adc59f`）主机端代码，替换此前经 MLX
-选择性移植的实现。默认值、输入校验、返回结构、路由与并发行为均以官方为准。
-新增批量预测、长文本扫描、完整 hooks、结构化决策、语言校准与校准保存／加载，
-并迁移官方路由 CLI、HTTP 服务、MCP 本地／远程工具及评估框架。
-数值和布尔选项标签、`option_order`、score legend、空问题 usage 等也恢复官方语义。
-
-迁移时注意：`load()` 默认加载英文模型，`Router()` 默认保留两个模型。
-需要保留原选择时，请显式使用 `load("multilingual")` 或 `Router(max_loaded=1)`。
-Core ML 模型仍保留导出的真实上下文和选项上限；ANE 的 96-token 限制不会消失。
-普通预测按该预算使用官方截断逻辑，`predict_long` 按该预算扫描长文本。
-
-详见 [0.4.0 迁移与兼容范围](docs/MIGRATION_0_4.md)、
-[官方权重／配置核对](benchmarks/results/official-v041-artifact-audit.json) 和
-[实际模型验证](benchmarks/results/official-host-v040-validation.json)。
-测试覆盖官方原始断言、源码与差分对照，以及 macOS 上真实 Core ML 转换和推理。
-推理不依赖 PyTorch、Transformers 或 MLX；可选温度拟合使用 PyTorch。
+Apache-2.0，见 [LICENSE](https://github.com/mizorewww/laya-coreml/blob/main/LICENSE) 与
+[NOTICE](https://github.com/mizorewww/laya-coreml/blob/main/NOTICE)。Laya 及其预训练权重归 Convai Innovations
+和上游贡献者所有。
