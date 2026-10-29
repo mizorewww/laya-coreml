@@ -3,7 +3,7 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
-## Unreleased
+## 0.6.1 — 2026-10-29
 
 - **Fix:** `predict_batch` no longer groups integer or boolean keys with their string equivalents
   (`1` vs `"1"`), which returned the wrong key types for later requests.
