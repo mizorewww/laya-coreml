@@ -17,14 +17,22 @@ GIF 保持录制时的 **1× 速度**。代码提供确定性的路径特征和�
 单独验证的 8-bit 版本为 4.88 ms、3.19 倍能效改善。**十倍目标尚未达到。**
 这些数字是单问题 API 的结果，不能当成完整贪吃蛇的每帧耗时。
 
-## 0.5.1：对齐上游 v0.4.12
+## 当前源码：对齐上游 v0.4.17，包版本保持 0.5.1
 
-当前源码固定对齐上游 `ffc142012af63d015fa19f05f29f9c5ff329a2cc`，包括批量、长文本、
-结构化决策、hooks、校准、评测、Router、HTTP/MCP 和框架集成。341 项公共接口审计、
-真实 logits 校准兼容检查，以及真实可选框架类型检查已通过；最终原生性能与安装包验收
-见[进度和证据](docs/UPSTREAM_0412_PROGRESS.json)。本次发行版本为 0.5.1。
-六个自适应 FP16/FP32 模型、固定 revision 和安装示例见 [0.5.1 发布说明](docs/RELEASE_0_5_1.md)。
-下方通用决策示例使用完整上下文的自适应 CPU/GPU 模型；性能以该发行版验收报告为准。
+当前源码固定对齐 `fe9a6c35023a7d94102e7feaaeaae8857d9d1b07`。
+新增 `detect_language(..., explain=True)`、`Router.route/route_batch(..., explain=True)`
+以及 `laya-coreml-router --explain`，提供语言判断理由与有限的来源路径。
+长文本扫描在结束 hook 重排答案后仍保留原始窗口；复制、修改或跨窗口共享的答案不再标注错误窗口。
+可靠性校准保留 NumPy 数值精度；集成、评测和文件读取加强输入验证。
+HTTP 请求体默认限时 10 秒（`LAYA_BODY_READ_TIMEOUT`），启用 API key 时关闭文档接口；
+显式批量大小仍受 token 预算限制。远程请求支持 `LAYA_USER_AGENT` 或 `user_agent=`。
+
+Core ML 张量、模型文件、`compute_units`、编译模型和形状缓存边界保持原有实现。
+完整变更、测试范围和限制见[迁移说明](docs/MIGRATION_0_4_17.md)、
+[26 项源文件清单](docs/UPSTREAM_PORT.json)和[当前 API 审计](docs/UPSTREAM_0417_API_AUDIT.json)。
+本次 [CI](https://github.com/Omicron0314/laya-coreml/actions/runs/40825520186) 中，Linux 通过 386 项测试、跳过 3 项 macOS 专用测试；macOS 的 389 项全部通过，包含原生转换与推理。两边的构建及 Twine 严格检查均通过。完整真实模型的稳定性、性能和能耗基准未重跑；此次未请求发布。
+原有[0.5.1 发布说明](docs/RELEASE_0_5_1.md)、六个自适应 FP16/FP32 模型以及
+[历史验收证据](docs/UPSTREAM_0412_PROGRESS.json)仍对应 v0.4.12，不代表此次源码已通过同等验收。
 
 Core ML 支持按 B=1/2/4/16 组合本地模型包，并为额外输入形状保留有上限的执行实例。
 首个形状复用已有实例；长尾形状按使用频率接纳，避免反复重载。`shape_cache_size=0`

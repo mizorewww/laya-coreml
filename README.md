@@ -1,13 +1,21 @@
 ![Laya Core ML playing Snake with real local model probabilities](https://raw.githubusercontent.com/mizorewww/laya-coreml/main/docs/assets/snake-demo.gif)
 
-Version **0.5.1** targets official Laya **v0.4.12**
-(`ffc142012af63d015fa19f05f29f9c5ff329a2cc`). Batch/long-text prediction, hooks,
-structured decisions, calibration, HTTP/MCP, evaluation, Router and optional
-integrations share the official host contracts. Native adaptive batch graphs and
-a bounded shape cache improve Core ML execution without changing host results.
-Existing Hub bundles retain their recorded graph capacities; adaptive bundles
-are separate artifacts; the [0.5.1 release notes](docs/RELEASE_0_5_1.md) list all six FP16/FP32 bundles. See the [migration guide](docs/MIGRATION_0_4.md)
-and [qualification status](docs/UPSTREAM_0412_PROGRESS.json).
+Current source targets official Laya **v0.4.17**
+(`fe9a6c35023a7d94102e7feaaeaae8857d9d1b07`); package version remains **0.5.1**.
+This source migration adds language explanations, reliable long-scan attribution
+through hooks, stricter integration/evaluation validation, bounded HTTP body reads
+and configurable remote User-Agent headers. Core ML tensor, artifact, compute-unit,
+compiled-model and shape-cache behavior remains native. See the
+[current migration and validation scope](docs/MIGRATION_0_4_17.md),
+[complete source inventory](docs/UPSTREAM_PORT.json) and
+[public API audit](docs/UPSTREAM_0417_API_AUDIT.json).
+Linux CI passed 386 tests (three macOS-only skips); macOS passed all 389 tests,
+including native conversion/inference. Build and strict Twine checks passed on both
+([CI evidence](https://github.com/Omicron0314/laya-coreml/actions/runs/40825520186)).
+
+No new release is requested. The [0.5.1 release notes](docs/RELEASE_0_5_1.md),
+[six FP16/FP32 bundles](docs/RELEASE_0_5_1.md) and recorded performance below
+remain historical v0.4.12 evidence; they do not qualify this source migration.
 
 # Laya-CoreML
 

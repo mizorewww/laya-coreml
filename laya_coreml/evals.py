@@ -238,14 +238,29 @@ class Dataset:
         # `Example(...)` skipped all three, and every reader of it takes the two fields as mappings: a
         # non-object `expected` died as an unhandled ``AttributeError``, in `evaluate` only after the
         # runner had answered (`laya/evals.py:1205`), and a non-object `questions` leaked through
-        # `questions_fingerprint` (`laya/evals.py:285`). An `expected` key with no question behind it
-        # was answered with "runner returned no answer for question 'x'" -- a verdict about the runner,
-        # paid for with a whole inference run, for a mistake in the caller's row. The two opt-in doors
+        # `questions_fingerprint` (`laya/evals.py::questions_fingerprint`). An `expected` key with no
+        # question behind it was answered with "runner returned no answer for question 'x'" -- a
+        # verdict about the runner, paid for with a whole inference run, for a mistake in the
+        # caller's row. The two opt-in doors
         # refused the same rows before calling anything, but as tracebacks
         # (`laya/evals_shortlist.py:38`, `laya/evals_tournament.py:33`). Checking at the door all four
         # readers share names the row and lands before a single call: a leaked traceback exits 1, the
         # code `laya-evals` reserves for a failed threshold (`laya/evals_cli.py:591`).
         for index, example in enumerate(self.examples):
+            # Both checks below read the row's own fields, so a row that is not a row at all died on the
+            # attribute before either could answer: `Dataset(json.load(handle))` -- the natural mistake
+            # when a dataset is a JSON *array* rather than JSONL, and the shape `Example.from_dict` exists
+            # to convert -- raised `AttributeError: 'dict' object has no attribute 'questions'` from
+            # inside the door. `docs/evals.md` ("Dataset format") promises this route fails as `EvalError`
+            # before the first model call, and a traceback names no row. The check is on the two attributes
+            # this door reads rather than on the type, so no row that works today starts being refused.
+            if not hasattr(example, "questions") or not hasattr(example, "expected"):
+                missing = "questions" if not hasattr(example, "questions") else "expected"
+                raise EvalError(
+                    "example %d must be an Example, got %s with no %r; build each row "
+                    "with laya.evals.Example(...) or Example.from_dict(...)"
+                    % (index, type(example).__name__, missing)
+                )
             if not isinstance(example.questions, dict):
                 raise EvalError(
                     "example %d 'questions' must be an object, got %s"
@@ -268,17 +283,29 @@ class Dataset:
 
     @classmethod
     def from_jsonl(cls, path: str) -> "Dataset":
+        # `laya-evals` promises exit 2 on a usage error and exit 1 only when a threshold or a
+        # tolerance failed (`docs/evals.md`), and a dataset the caller cannot hand over is the
+        # caller's mistake. Four shapes of unreadable escaped that as a traceback and exit 1 -- a
+        # path that is a directory, a file without read permission, bytes that are not UTF-8 and a
+        # line nested deeper than `json` will walk -- while a line that is merely malformed JSON was
+        # already reported, three lines below. `file_fingerprint` above and `_load_report` in
+        # `laya/evals_cli.py` read a caller's path this way already; this makes the dataset reader
+        # agree with them. `UnicodeDecodeError` rather than `ValueError` on purpose: `EvalError`
+        # *is* a `ValueError`, so the wider class would re-wrap the row errors named just below.
         examples: List[Example] = []
-        with open(path, "r", encoding="utf-8") as handle:
-            for lineno, line in enumerate(handle, 1):
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                try:
-                    row = json.loads(line)
-                except ValueError as exc:
-                    raise EvalError("%s:%d is not valid JSON: %s" % (path, lineno, exc))
-                examples.append(Example.from_dict(row, where="%s:%d" % (path, lineno)))
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                for lineno, line in enumerate(handle, 1):
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except ValueError as exc:
+                        raise EvalError("%s:%d is not valid JSON: %s" % (path, lineno, exc))
+                    examples.append(Example.from_dict(row, where="%s:%d" % (path, lineno)))
+        except (OSError, UnicodeDecodeError, RecursionError) as exc:
+            raise EvalError("%s cannot be read: %s" % (path, exc)) from exc
         if not examples:
             raise EvalError("%s contains no examples" % path)
         return cls(examples)
@@ -537,10 +564,15 @@ def _answer_confidence(answer: Dict[str, Any]) -> Optional[float]:
     and the gap between them; `docs/evals.md` says so where an operator reads the metrics.
     """
     confidence = answer.get("answer_confidence")
-    if isinstance(confidence, (int, float)):
+    # `bool` is a subclass of `int`, so `isinstance(True, (int, float))` is true: a JSON
+    # `"answer_confidence": true` would be read as a confidence of 1.0 and mask the numeric
+    # `confidence` fallback below. A yes/no flag is not a probability, so it is skipped exactly
+    # like an absent or non-numeric field -- the same exclusion `confidence.py` and the schema
+    # guards apply to every other caller-supplied probability.
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
         return float(confidence)
     confidence = answer.get("confidence")
-    if isinstance(confidence, (int, float)):
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
         return float(confidence)
     if answer.get("type") == "noul":
         p = float(answer.get("noul", 0.0))
@@ -1406,6 +1438,16 @@ def evaluate(
             )
             index += len(chunk)
             continue
+        # One result per row is the batch contract; `zip` below would silently pair the rest of
+        # the chunk with nothing, so a runner that drops a row would score a subset while
+        # `rows_grouped` still counted every row -- a report that under-scores itself, and a
+        # baseline gate that can pass on the subset.
+        results = list(results)
+        if len(results) != len(chunk):
+            raise EvalError(
+                "runner.predict_batch returned %d results for a chunk of %d rows; every row "
+                "needs its own result" % (len(results), len(chunk))
+            )
         elapsed = (time.perf_counter() - started) * 1000.0
         # A chunk is one call, so each of its rows waited all of `elapsed`; the split figure is a
         # throughput share, not a latency, and putting the two in one list made a batched run
@@ -1504,8 +1546,16 @@ def assert_regression(
     """Raise AssertionError when `report` drifts from `baseline` beyond `tolerances`."""
     ok, deltas = report.compare(baseline, tolerances)
     if not ok:
+        # `compare()` fails three shapes, and only the numeric one makes `abs(diff) > tolerance`
+        # true: a missing metric and an incomparable coverage definition both store a NaN diff
+        # (laya/evals.py:928-936), and every comparison with NaN is False, which is exactly why
+        # compare() tests `not abs(diff) <= allowed` (comment at laya/evals.py:946-949). Filtering
+        # on `>` alone dropped both, so the gate raised "evaluation regressed: {}" and lost the
+        # metric and the reason compare() had already computed.
         failed = {
-            m: d for m, d in deltas.items() if d.get("missing") or abs(d["diff"]) > d["tolerance"]
+            m: d
+            for m, d in deltas.items()
+            if d.get("missing") or d.get("incomparable") or not abs(d["diff"]) <= d["tolerance"]
         }
         raise AssertionError("evaluation regressed: %s" % json.dumps(failed, sort_keys=True))
     return deltas

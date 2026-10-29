@@ -139,7 +139,18 @@ def _noul_field(path: str, name: str, description: Optional[str]) -> _Field:
 
 def _score_field(path: str, name: str, prop: Dict[str, Any], description: Optional[str]) -> _Field:
     lo, hi = prop.get("minimum"), prop.get("maximum")
-    if not isinstance(lo, int) or not isinstance(hi, int):
+    # `bool` is a subclass of `int`, so `isinstance(True, int)` is true: a JSON `"minimum": true`
+    # would otherwise slip through and silently become a bound of 1 (`"maximum": false` a bound of
+    # 0), even though the same message rejects `"0"` and `1.5`. `_enum_field` below refuses a
+    # `[true, false]` enum on the same principle -- a boolean is a yes/no, not a number -- so the
+    # exclusion belongs here too, routed into the existing "needs integer" error the string and
+    # float bounds already raise.
+    if (
+        isinstance(lo, bool)
+        or isinstance(hi, bool)
+        or not isinstance(lo, int)
+        or not isinstance(hi, int)
+    ):
         raise SchemaError(
             "%s: a numeric field needs integer 'minimum' and 'maximum' to become a score" % path
         )
@@ -289,7 +300,11 @@ def _project(answers: Dict[str, Any], fields: Sequence[_Field]) -> Dict[str, Any
     values: Dict[str, Any] = {}
     for f in fields:
         answer = answers.get(f.name)
-        if answer is None:
+        # A field whose answer is not an answer object carries nothing to project -- exactly the
+        # absent field the `None` branch already omits. `apply_confidence_gate` makes the same call
+        # and skips a non-dict answer (confidence.py:298); reading `.get` off one instead raised a
+        # raw AttributeError here and crashed the whole projection.
+        if not isinstance(answer, dict):
             continue
         if answer.get("low_confidence"):
             values[f.name] = None
@@ -335,6 +350,10 @@ def _details(
     answer_confidence: Dict[str, Optional[float]] = {}
     probabilities: Dict[str, Dict[str, Any]] = {}
     for name, answer in answers.items():
+        if not isinstance(answer, dict):
+            # Same rule as `_project` and `apply_confidence_gate`: a non-dict answer is no answer,
+            # so it reports no confidence rather than raising AttributeError on `.get`.
+            continue
         confidence[name] = float(answer.get("confidence", 0.0))
         # Read through the module that owns the definition, so this and the `min_confidence` gate
         # cannot disagree about which quantity is being reported.

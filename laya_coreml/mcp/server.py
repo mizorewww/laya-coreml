@@ -32,6 +32,7 @@ Environment (same meaning as laya.serve where it exists):
                   it to Router, an unresolvable one is a tool error.
   LAYA_BASE_URL  answer from a running laya-serve over HTTP; unset keeps models local
   LAYA_REMOTE_TIMEOUT  HTTP timeout in seconds for remote mode (default 300)
+  LAYA_USER_AGENT  remote HTTP client identity (default laya/<version>)
 """
 
 from __future__ import annotations

@@ -404,9 +404,15 @@ def _load_report(path: str) -> Dict[str, Any]:
 def _check_thresholds(
     overall: Dict[str, float], mins: Dict[str, float], maxs: Dict[str, float]
 ) -> List[str]:
+    """Each limit is checked against the metric it names, and a metric absent from the report fails.
+
+    A `noul_accuracy` standing in for `choice_accuracy` here would gate a choice threshold on the
+    accuracy of a different question type, so a noul-only run could clear a `--min choice_accuracy`
+    it never answered -- `docs/evals.md` requires the missing-metric failure instead. `--min-accuracy`
+    is the flag that means "whichever accuracy this dataset has", and `_cmd_run` resolves it to the
+    key the report actually carries.
+    """
     failures: List[str] = []
-    if "choice_accuracy" not in overall and "noul_accuracy" in overall:
-        overall = dict(overall, choice_accuracy=overall["noul_accuracy"])
     for name, limit in mins.items():
         value = overall.get(name)
         if value is None:

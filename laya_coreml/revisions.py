@@ -141,6 +141,15 @@ def verify_digests(
             rel_norm = raw_rel.lstrip("/")
             if not rel_norm or rel_norm == ".." or rel_norm.startswith("../") or "/../" in rel_norm:
                 raise ValueError("laya: unsafe path in expected digests: %r" % (rel,))
+            # Drive-anchored components are not absolute by ntpath's own test
+            # (ntpath.isabs("C:evil") is False), but on Windows ntpath.join resets to
+            # the drive the moment one appears -- os.path.join("C:\\dir", "a", "b:c")
+            # is "b:c" -- so a digest entry like "a/b:c" escapes model_dir and the
+            # verification reads a file outside the checkpoint it is meant to gate.
+            if any(ntpath.splitdrive(part)[0] for part in rel_norm.split("/")):
+                raise ValueError(
+                    "laya: unsafe drive-anchored path in expected digests: %r" % (rel,)
+                )
             path = os.path.join(model_dir, rel_norm)
         if not os.path.isfile(path):
             raise FileNotFoundError(

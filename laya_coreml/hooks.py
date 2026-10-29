@@ -13,6 +13,7 @@ import asyncio
 import contextvars
 import inspect
 import math
+import numbers
 import random
 import string
 import threading
@@ -34,6 +35,8 @@ from typing import (
     Tuple,
     Union,
 )
+
+import numpy as np
 
 
 @dataclass(eq=False)
@@ -273,6 +276,8 @@ def validate_timeout(value: Optional[float]) -> Optional[float]:
     ``join(inf)`` raises ``OverflowError`` instead of waiting.
     A bool is rejected as well: ``float(True)`` is ``1.0``, so ``hooks_timeout=True`` would
     otherwise install a one-second deadline on every hook call that the caller never asked for.
+    A value ``float()`` cannot read -- a list/object, or a JSON integer too large for a float -- is
+    rejected with the same ``ValueError`` rather than leaking ``TypeError``/``OverflowError``.
     """
     if value is None:
         return None
@@ -284,7 +289,17 @@ def validate_timeout(value: Optional[float]) -> Optional[float]:
         raise ValueError(
             "hooks_timeout must be a positive finite number or None, not a bool; got %r" % (value,)
         )
-    timeout = float(value)
+    try:
+        timeout = float(value)
+    except (TypeError, OverflowError):
+        # A list/object is not a number and a JSON integer larger than a float overflows `float()`;
+        # both used to escape as a raw TypeError/OverflowError from the coercion below. `OverflowError`
+        # in particular is a valid-JSON number that reached `laya/mcp/tools.py::_validate_hooks_timeout`,
+        # which catches only (TypeError, ValueError), so it surfaced as `internal_error`. Refuse both
+        # shapes here with the same ValueError as every other bad timeout.
+        raise ValueError(
+            "hooks_timeout must be a positive finite number or None; got %r" % (value,)
+        ) from None
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError(
             "hooks_timeout must be a positive finite number or None; got %r" % (value,)
@@ -682,11 +697,51 @@ def calibrate_reliability(
     escalate = highest cutoff below `accept` where answers below it are at most
                `max_escalate_accuracy` accurate.
     If no cutoff reaches `target_accuracy`, accept is returned as 1.01 (accept nothing).
+    Cutoffs use the supplied scores without rounding, matching the hook's reported
+    `soft_stability` and runtime comparison. Equal scores are evaluated together.
+
+    Scores and correctness labels must have equal, nonzero lengths. Scores and
+    accuracy targets must be finite real numbers in [0, 1], excluding bool;
+    invalid lengths or values raise ValueError. Correctness labels must be
+    booleans or TypeError is raised. Invalid evidence is never filtered or coerced.
+
+    "Real number" and "boolean" mean the NumPy scalars too, because `correct` is
+    normally computed, not written out: `preds == gold` on a NumPy or pandas column
+    yields `np.bool_`, which is a boolean by every meaning except `isinstance(x, bool)`.
+    `numbers.Real` covers `np.float32` and `np.int64` and still excludes `np.bool_`,
+    so the two checks stay disjoint. `soft_scores` and `correct` must be sized; a
+    generator raises TypeError, since a length mismatch has to be detectable.
     """
-    pairs = sorted(zip(soft_scores, correct))
-    if not pairs:
+    if len(soft_scores) != len(correct):
+        raise ValueError("soft_scores and correct must have the same length")
+    if len(soft_scores) == 0:
         raise ValueError("cannot calibrate reliability on empty scores/correct pairs")
-    cuts = sorted({round(s, 4) for s, _ in pairs})
+    for name, value in (
+        ("target_accuracy", target_accuracy),
+        ("max_escalate_accuracy", max_escalate_accuracy),
+    ):
+        if (
+            isinstance(value, (bool, np.bool_))
+            or not isinstance(value, numbers.Real)
+            or not (0.0 <= value <= 1.0)
+            or not math.isfinite(value)
+        ):
+            raise ValueError("%s must be a finite number in [0, 1], got %r" % (name, value))
+    for i, score in enumerate(soft_scores):
+        if (
+            isinstance(score, (bool, np.bool_))
+            or not isinstance(score, numbers.Real)
+            or not (0.0 <= score <= 1.0)
+            or not math.isfinite(score)
+        ):
+            raise ValueError(
+                "soft_scores[%d] must be a finite number in [0, 1], got %r" % (i, score)
+            )
+    for i, label in enumerate(correct):
+        if not isinstance(label, (bool, np.bool_)):
+            raise TypeError("correct[%d] must be a bool, got %r" % (i, label))
+    pairs = sorted(zip(soft_scores, correct))
+    cuts = sorted({s for s, _ in pairs})
 
     accept = 1.01
     for t in cuts:
@@ -702,11 +757,21 @@ def calibrate_reliability(
         below = [c for s, c in pairs if s < t]
         if below and sum(below) / len(below) <= max_escalate_accuracy:
             escalate = t
-    return accept, escalate
+    # The cutoffs are thresholds a caller stores and replays, so hand back plain floats: a
+    # `np.float32` score would otherwise travel into a JSON report as a NumPy scalar.
+    return float(accept), float(escalate)
 
 
 def _seed_of(state: Any) -> str:
     return state if isinstance(state, str) else repr(state)
+
+
+def _has_semantic_description(val: Any) -> bool:
+    if val is None or val == "":
+        return False
+    if isinstance(val, str) and not val.strip():
+        return False
+    return True
 
 
 class OptionStabilityHook(BaseHook):
@@ -883,7 +948,16 @@ class OptionStabilityHook(BaseHook):
         new_q = dict(q)
         crit = q.get("criteria")
         if isinstance(crit, dict):
-            new_q["criteria"] = {s: crit[orig] for s, orig in zip(shown, order)}
+            if relabel:
+                # If an option has no semantic description (None, empty, or whitespace),
+                # preserve the original label as the description so the model still receives
+                # the semantic text under letter renaming (#1285).
+                new_q["criteria"] = {
+                    s: (crit[orig] if _has_semantic_description(crit[orig]) else orig)
+                    for s, orig in zip(shown, order)
+                }
+            else:
+                new_q["criteria"] = {s: crit[orig] for s, orig in zip(shown, order)}
         elif isinstance(crit, (list, tuple)):
             if relabel:
                 new_q["criteria"] = {s: orig for s, orig in zip(shown, order)}
@@ -1077,7 +1151,7 @@ class OptionStabilityHook(BaseHook):
                     "decision": decide_reliability(soft, self.accept, self.escalate)
                     if soft is not None
                     else None,
-                    "soft_stability": round(soft, 4) if soft is not None else None,
+                    "soft_stability": soft,
                     "stability": round(stability, 4) if stability is not None else None,
                     "rename_stability": round(rename_stab, 4) if rename_stab is not None else None,
                     "reorder_stability": round(reorder_stab, 4)

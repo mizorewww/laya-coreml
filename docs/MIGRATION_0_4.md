@@ -1,8 +1,12 @@
+> Current source target: upstream v0.4.17 (`fe9a6c35023a7d94102e7feaaeaae8857d9d1b07`).
+> See [the current migration](MIGRATION_0_4_17.md) for behavior, inventory and validation.
+> The sections below preserve earlier migrations and qualification evidence.
+
 # Migrating to laya-coreml 0.4.0
 
-## Unreleased v0.4.12 synchronization
+## Historical v0.4.12 synchronization
 
-The current source target is official v0.4.12, commit
+The source target of this historical synchronization was official v0.4.12, commit
 `ffc142012af63d015fa19f05f29f9c5ff329a2cc`. This source update is not a published
 release. The 341-entry public API audit and real-logit calibration compatibility
 campaign have passed. Real optional-framework checks cover LangChain/LangGraph,

@@ -1,4 +1,4 @@
-"""Host prediction methods ported directly from official Laya v0.4.1.
+"""Host prediction methods ported directly from official Laya v0.4.17.
 
 Core ML adaptation is restricted to _forward's fixed exported shapes and resource cleanup.
 """
@@ -69,7 +69,36 @@ def _option_count(qdef: Dict) -> int:
     return len(crit) if isinstance(crit, (dict, list, tuple)) else 0
 
 
-def _start_evidence():
+def _scan_answer_values(answer):
+    # Reliability/action annotations do not change which prediction the model made. Keep the
+    # prediction fields independent of in-place edits to probabilities or a score's legend.
+    return {
+        key: answer[key]
+        for key in (
+            "type",
+            "choice",
+            "noul",
+            "score",
+            "legend",
+            "probabilities",
+            "confidence",
+            "answer_confidence",
+        )
+        if key in answer
+    }
+
+
+def _scan_answer_index(evidence, qid, answer, fallback):
+    recorded = evidence["answers"]
+    if recorded is None:
+        return fallback  # a replacement batch never dispatched hooks
+    record = recorded.get((qid, id(answer)))
+    if record is not None and record[0] is answer and record[2] == _scan_answer_values(answer):
+        return record[1]
+    return None  # replaced, edited, or shared across windows
+
+
+def _start_evidence(track_answers=False):
     """A recorder for `predict_long`: what the start-hook chain left for inference to run on.
 
     Why a recorder at all: `ctx.skip()` only assigns `ctx.results` (see `laya.hooks.PredictContext`),
@@ -91,10 +120,27 @@ def _start_evidence():
         "answered": False,
         "states": None,
         "question_types": None,
+        "answers": None,
         "max_len": None,
         "head_max_len": None,
         "questions": None,
     }
+
+    def record_results(ctx):
+        if evidence["answered"]:
+            return
+        recorded = {}
+        for index, result in enumerate(ctx.results):
+            for qid, answer in result["answers"].items():
+                key = (qid, id(answer))
+                # Keep the object alive as well as its id. One object emitted for more than
+                # one window has no unique origin, even when all prediction fields agree.
+                recorded[key] = (
+                    None
+                    if key in recorded
+                    else (answer, index, copy.deepcopy(_scan_answer_values(answer)))
+                )
+        evidence["answers"] = recorded
 
     def probe(ctx):
         evidence["answered"] = ctx.results is not None
@@ -115,6 +161,10 @@ def _start_evidence():
         evidence["max_len"] = ctx.max_len
         evidence["head_max_len"] = ctx.head_max_len
         evidence["questions"] = dict(ctx.questions) if ctx.questions else {}
+        if track_answers:
+            # predict_batch calls this before ANY end hook, including defaults and installed
+            # hooks. An end observer appended to the hook list would already see reordered rows.
+            ctx._record_scan_results = record_results
 
     return probe, evidence
 
@@ -500,7 +550,7 @@ class RuntimeMixin(HookRegistry):
                 )
             z = raw_rows[j] / t_scale
             p = np.exp(z - z.max())
-            p = p / p.sum()
+            p /= p.sum()
 
             # The row comes back in slot order; everything below indexes by option.
             p = unpermute_probs(p, q.get("option_order"))
@@ -767,6 +817,9 @@ class RuntimeMixin(HookRegistry):
                 ctx.usage = aggregate_usage(ctx.results)
                 apply_confidence_gate(ctx.results, mc)
             try:
+                record_scan = getattr(ctx, "_record_scan_results", None)
+                if ctx.error is None and ctx.results is not None and record_scan is not None:
+                    record_scan(ctx)
                 dispatch(
                     active,
                     "on_predict_end",
@@ -836,6 +889,10 @@ class RuntimeMixin(HookRegistry):
           * a rewritten scan (`ctx.states` replaced, in any way): the answers are aggregated over
             the states that were scored, but no answer carries `answer["window"]` -- the offsets
             above describe this method's windows, not the text the model read
+
+        End hooks may reorder results without changing an answer's original window. Attribution
+        follows the original answer object, provided its prediction fields are unchanged. Cloned,
+        replaced or edited answers have no window attribution; added reliability metadata is kept.
 
         Args:
             window: state tokens per window. Defaults to the checkpoint's state budget,
@@ -987,7 +1044,7 @@ class RuntimeMixin(HookRegistry):
                 break
             i += step
 
-        probe, evidence = _start_evidence()
+        probe, evidence = _start_evidence(track_answers=True)
         # `list(windows)`, not `windows`: `ctx.states` is the list the hook receives, so a hook that
         # mutates it in place (`append`, `sort`) would otherwise also grow the split this call
         # attributes answers to, and the counts would agree while `starts` no longer lined up.
@@ -1066,6 +1123,20 @@ class RuntimeMixin(HookRegistry):
             question_types = {qid: self._to_internal(qdef)["t"] for qid, qdef in questions.items()}
         answers = {}
         for qid, qtype in question_types.items():
+            missing = sum(qid not in r["answers"] for r in results)
+            if missing:
+                # End hooks may remove start-added questions, but must not hide a missing
+                # caller answer or an inconsistent set of answers across windows.
+                if (
+                    missing == len(results)
+                    and qid not in asked
+                    and evidence["question_types"] is not None
+                ):
+                    continue
+                raise ValueError(
+                    "predict_long: answer %r is missing from %d of %d windows after prediction hooks"
+                    % (qid, missing, len(results))
+                )
             per = [r["answers"][qid] for r in results]
             if qtype == "noul":
                 # Evidence anywhere: the strongest window decides. Its own P(true) and confidence
@@ -1076,14 +1147,17 @@ class RuntimeMixin(HookRegistry):
                 # neutral document lets the neutral majority out-vote the one window that saw the
                 # deciding span; the single most-confident window preserves a localized signal.
                 best = max(range(len(per)), key=lambda j: float(per[j]["answer_confidence"]))
-            ans = per[best]
+            original = per[best]
+            index = None if rewritten else _scan_answer_index(evidence, qid, original, best)
+            ans = dict(original)
+            ans.pop("window", None)
             # Name the window that decided, so a caller can check the deciding span itself. The
             # probability here is that window's, NOT a document-level calibrated number.
-            if not rewritten:
+            if index is not None:
                 ans["window"] = {
-                    "index": best,
-                    "token_start": starts[best],
-                    "token_end": min(starts[best] + budget, len(state_ids)),
+                    "index": index,
+                    "token_start": starts[index],
+                    "token_end": min(starts[index] + budget, len(state_ids)),
                     "count": len(results),
                 }
             answers[qid] = ans

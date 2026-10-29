@@ -5,8 +5,8 @@ Official behavior, defaults, validation, return structures and tests are the
 source of truth. Do not redesign host semantics based on preference or mirror a
 behaviorally divergent downstream implementation.
 
-Current baseline: NandhaKishorM/laya v0.4.12,
-ffc142012af63d015fa19f05f29f9c5ff329a2cc. CI checks it out into .upstream.
+Current baseline: NandhaKishorM/laya v0.4.17,
+fe9a6c35023a7d94102e7feaaeaae8857d9d1b07. CI checks it out into .upstream.
 
 Keep host changes traceable to upstream. Limit adaptations to the Core ML tensor,
 artifact, device and resource boundaries; document every material incompatibility

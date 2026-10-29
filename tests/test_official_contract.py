@@ -139,6 +139,13 @@ def test_long_and_structured_match_official(official):
 @pytest.mark.parametrize(
     "script",
     [
+        "cli_lang_guess",
+        "lang_diagnostics",
+        "confidence",
+        "crewai",
+        "langchain",
+        "llamaindex",
+        "_long_attribution",
         "option_stability",
         "evals_agreement",
         "evals_tournament",
@@ -167,7 +174,8 @@ def test_long_and_structured_match_official(official):
     ],
 )
 def test_original_upstream_assertions(script):
-    path = UPSTREAM / "tests" / f"test_{script}.py"
+    name = script if script.startswith("_") else "test_" + script
+    path = UPSTREAM / "tests" / (name + ".py")
     if not path.exists():
         pytest.skip("checkout pinned upstream into .upstream")
     result = subprocess.run(

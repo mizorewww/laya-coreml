@@ -85,6 +85,9 @@ from ._controls import router_kwargs as _router_kwargs  # noqa: E402
 
 # One class for every integration, so `except LayaLowConfidenceError` catches all of them.
 from ._errors import LayaLowConfidenceError  # noqa: E402
+from ._guard import answers_map as _answers_map  # noqa: E402
+from ._guard import malformed as _malformed  # noqa: E402
+from ._guard import probability_map as _probability_map  # noqa: E402
 
 
 def _gated_confidence(answer: Dict[str, Any]) -> float:
@@ -206,12 +209,34 @@ def _call_remote(
     opener = urllib.request.build_opener(_SameOriginRedirectHandler())
     try:
         with opener.open(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            parsed = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"Laya server error {e.code}: {body}") from e
     except Exception as e:
         raise RuntimeError(f"Failed to connect to Laya server at {url}: {e}") from e
+    # A remote laya-serve answers with a JSON object, but `json.loads` accepts any top-level value:
+    # a gateway, a mis-pointed `base_url`, or a proxy error page can reply with a bare array, string,
+    # number or `true`/`null`. Consumers read the result with `res.get("answers", …)` (the selector
+    # and route lookups), so a non-object leaks ``AttributeError: 'list' object has no attribute
+    # 'get'`` instead of the ``RuntimeError`` every other remote failure here already raises. The
+    # check sits after the ``try`` so it is not swallowed by the catch-all connect handler above.
+    if not isinstance(parsed, dict):
+        raise RuntimeError(
+            f"Malformed decision response from Laya server at {url}: "
+            f"expected a JSON object, got {type(parsed).__name__}"
+        )
+    # `parsed` is an object now, but its `answers` field is the same arbitrary JSON: a gateway can
+    # answer `{"answers": []}`. The selector, the multi-selector and the query router each read it as
+    # `res.get("answers", {})` and then call `.get("selector"/"route", …)` on it, so a non-object there
+    # leaks AttributeError past the same fail-closed paths -- this is the guard above one level deeper.
+    # A missing `answers` is left alone: that is the no-decision case they already handle.
+    if "answers" in parsed and not isinstance(parsed["answers"], dict):
+        raise RuntimeError(
+            f"Malformed decision response from Laya server at {url}: "
+            f"'answers' must be a JSON object, got {type(parsed['answers']).__name__}"
+        )
+    return parsed
 
 
 _DEFAULT_ROUTER = None
@@ -379,9 +404,16 @@ class LayaSingleSelector(_TypedSelectorPrompts, BaseSelector):
             hooks_timeout=self.hooks_timeout,
         )
         self.last_decision = res
-
-        ans = res.get("answers", {}).get("selector", {})
+        where = f"Laya server at {self.base_url}" if self.base_url else "Laya"
+        # A remote body is arbitrary JSON: `answers`, the answer under `selector` and the fields
+        # read out of it are all checked before use, so a malformed body fails closed with a named
+        # error instead of raising AttributeError/TypeError out of a routing decision. `choice` is
+        # the field that used to crash here -- `.startswith` on a list -- and `confidence` is read
+        # through `_gated_confidence`, which already refuses a non-number and a bool.
+        ans = _answers_map(res, where).get("selector", {})
         chosen_key = ans.get("choice")
+        if chosen_key is not None and not isinstance(chosen_key, str):
+            raise _malformed(where, "'choice' must be a string, got %s" % type(chosen_key).__name__)
         conf = _gated_confidence(ans)
 
         # Map "choice_i" back to index i
@@ -532,22 +564,24 @@ class LayaMultiSelector(_TypedSelectorPrompts, BaseSelector):
             hooks_timeout=self.hooks_timeout,
         )
         self.last_decision = res
+        where = f"Laya server at {self.base_url}" if self.base_url else "Laya"
+        # Same checks as the single selector, plus `probabilities`: this one sorts and thresholds
+        # every value, so a dict mixing numbers with a string raised TypeError from `sorted`, and a
+        # `true` ranked first as 1.0 (bool subclasses int) -- a malformed body could win the
+        # selection rather than being refused. Restricting to the caller's own keys also keeps an
+        # unknown extra key from winning the ranking.
+        ans = _answers_map(res, where).get("selector", {})
+        key_list = list(criteria.keys())
+        probs = _probability_map(ans, key_list, where)
 
-        ans = res.get("answers", {}).get("selector", {})
-        probs = ans.get("probabilities", {})
+        # Sort candidate choices by descending probability. Every key is present in `probs` and each
+        # value is a float, so this cannot raise on mixed types any more (it used to).
+        ranked = sorted(key_list, key=probs.__getitem__, reverse=True)
 
         selected: List[ToolSelection] = []
-        key_list = list(criteria.keys())
-
-        # Sort candidate choices by descending probability
-        ranked = sorted(
-            key_list,
-            key=lambda k: probs.get(k, 0.0),
-            reverse=True,
-        )
 
         for key in ranked:
-            prob = probs.get(key, 0.0)
+            prob = probs[key]
             if prob >= self.probability_threshold:
                 try:
                     idx = (
@@ -697,9 +731,11 @@ class LayaQueryRouter:
             hooks_timeout=self.hooks_timeout,
         )
         self.last_decision = res
-
-        ans = res.get("answers", {}).get("route", {})
+        where = f"Laya server at {self.base_url}" if self.base_url else "Laya"
+        ans = _answers_map(res, where).get("route", {})
         chosen = ans.get("choice")
+        if chosen is not None and not isinstance(chosen, str):
+            raise _malformed(where, "'choice' must be a string, got %s" % type(chosen).__name__)
         conf = _gated_confidence(ans)
 
         if self.confidence_threshold > 0.0 and conf < self.confidence_threshold:

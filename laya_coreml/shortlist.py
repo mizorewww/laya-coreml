@@ -253,15 +253,21 @@ def embed_fn_from_agent(
     if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size < 1:
         raise ValueError("batch_size must be a positive integer, got %r" % (batch_size,))
 
-    if not hasattr(agent.model, "encoder"):
+    tok = getattr(agent, "tok", None)
+    model = getattr(agent, "model", None)
+    if tok is None or model is None:
+        raise TypeError("agent must provide tok and model.encoder")
+    # Converted Core ML bundles retain their explicit encoder-output boundary.
+    if not hasattr(model, "encoder"):
         raise NotImplementedError(
             "This Core ML bundle exposes decision outputs only; supply an external embed_fn."
         )
 
-    import torch
+    encoder = model.encoder
+    if encoder is None:
+        raise TypeError("agent must provide tok and model.encoder")
 
-    tok = agent.tok
-    encoder = agent.model.encoder
+    import torch
 
     def embed_fn(texts: Sequence[str]) -> np.ndarray:
         rows = ["" if text is None else str(text) for text in texts]

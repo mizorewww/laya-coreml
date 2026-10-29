@@ -41,3 +41,10 @@ code is ported directly from official Laya v0.4.1 at
 Adaptations: NumPy collation and fixed-shape Core ML transport; lazy optional
 PyTorch fitting/training imports; converted-artifact resolution and context limits;
 Core ML resource cleanup. See docs/MIGRATION_0_4.md for compatibility boundaries.
+
+Host behavior synchronized directly with official Laya v0.4.17 at
+fe9a6c35023a7d94102e7feaaeaae8857d9d1b07, from the v0.4.12 baseline
+ffc142012af63d015fa19f05f29f9c5ff329a2cc. Reviewed host regression and
+attribution-helper adapter patterns also adapted from laya-mlx 0e8c0e51f8914908cc99591576ff1deeed205c82.
+Core ML tensors, artifacts, compute units, compiled models and shape caches retain
+their native implementations. See docs/MIGRATION_0_4_17.md for scope and evidence.

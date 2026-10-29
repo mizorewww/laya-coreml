@@ -351,7 +351,12 @@ class LayaToolSelector:
             hooks_timeout=self.hooks_timeout,
         )
 
-        answers_dict = result.get("answers")
+        # A remote laya-serve body is arbitrary JSON: a gateway or mis-pointed URL can answer
+        # with a top-level array, string or number, where `.get` would raise AttributeError and
+        # defeat the fail-closed branch below -- including the fallback_tool path meant to absorb
+        # exactly this malformed response. Read `answers` only from an object; anything else is
+        # the same "missing or malformed decision response" the guard already handles.
+        answers_dict = result.get("answers") if isinstance(result, dict) else None
         if not isinstance(answers_dict, dict) or "tool_select" not in answers_dict:
             if self.fallback_tool is not None:
                 fb_name, _ = _extract_tool_metadata(self.fallback_tool, -1)
@@ -389,15 +394,46 @@ class LayaToolSelector:
         conf = _gated_confidence(answer)
         raw_probs = answer.get("probabilities", {})
 
-        # Map internal keys back to tool names in probabilities
+        # Map internal keys back to tool names in probabilities. A remote body can carry a
+        # probability that is not a number -- a bool, None, or a string like "high" -- and float()
+        # would then raise a raw ValueError/TypeError here, after the malformed-response guards
+        # above, defeating the same fallback_tool path that absorbs a malformed `answers` block.
+        # A boolean is refused explicitly because bool is a subclass of int, so float(True) would
+        # silently read as 1.0. Anything unparsable fails closed like those guards. Numeric strings
+        # keep their existing acceptance.
         probabilities: Dict[str, float] = {}
+        bad_prob = False
         if isinstance(raw_probs, dict):
             for k, prob in raw_probs.items():
+                if isinstance(prob, bool):
+                    bad_prob = True
+                    break
+                try:
+                    value = float(prob)
+                except (TypeError, ValueError):
+                    bad_prob = True
+                    break
                 if k in lookup:
                     tool_info = lookup[k]
-                    probabilities[tool_info[2]] = float(prob)
+                    probabilities[tool_info[2]] = value
                 else:
-                    probabilities[k] = float(prob)
+                    probabilities[k] = value
+
+        if bad_prob:
+            if self.fallback_tool is not None:
+                fb_name, _ = _extract_tool_metadata(self.fallback_tool, -1)
+                return ToolRouteDecision(
+                    tool=self.fallback_tool,
+                    tool_name=fb_name,
+                    tool_index=-1,
+                    confidence=0.0,
+                    probabilities={},
+                    reason="Malformed probability in decision answer; routed to fallback tool",
+                    is_direct_answer=False,
+                    is_fallback=True,
+                    raw_decision=result,
+                )
+            raise RuntimeError(f"Malformed probability in decision answer from Laya: {raw_probs!r}")
 
         # Check confidence gating: unusable, missing, or NaN confidence fails closed
         threshold = (
@@ -441,7 +477,11 @@ class LayaToolSelector:
                 raw_decision=result,
             )
 
-        if chosen_key is None or chosen_key not in lookup:
+        # A remote body can answer with a JSON array or object for `choice`, and `chosen_key not in
+        # lookup` then raises a bare interpreter TypeError instead of taking the fallback path below
+        # or naming the decision. `agno`/`crewai`/`llamaindex` refuse a non-string `choice` the same
+        # way; here it belongs in the existing "unknown decision" branch so fallback still applies.
+        if chosen_key is None or not isinstance(chosen_key, str) or chosen_key not in lookup:
             if self.fallback_tool is not None:
                 fb_name, _ = _extract_tool_metadata(self.fallback_tool, -1)
                 return ToolRouteDecision(

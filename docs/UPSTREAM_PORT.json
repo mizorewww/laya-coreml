@@ -1,8 +1,8 @@
 {
   "package_version": "0.5.1",
   "upstream_repository": "https://github.com/NandhaKishorM/laya",
-  "upstream_version": "0.4.12",
-  "upstream_commit": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+  "upstream_version": "0.4.17",
+  "upstream_commit": "fe9a6c35023a7d94102e7feaaeaae8857d9d1b07",
   "policy": "Official host behavior is authoritative; Core ML adaptations stay at backend boundaries.",
   "direct_host_modules": [
     "hooks",
@@ -51,17 +51,214 @@
     "Router construction stubs are dispatched through the Core ML factory",
     "Two structured suites exclude their ONNX-only method-existence assertion",
     "CUDA device, PyTorch thread-pool and training CLI checks use separate Core ML boundary tests",
-    "Idle-window fixture measures the same 200 ms minimum on the worker; preserves eight combinations, non-overlap and eventual-unload checks; rejects early unloading with controlled-clock regression coverage (docs/CI_TIMING.md)."
+    "Idle-window fixture measures the same 200 ms minimum on the worker; preserves eight combinations, non-overlap and eventual-unload checks; rejects early unloading with controlled-clock regression coverage (docs/CI_TIMING.md).",
+    "Shared upstream long-attribution helper uses the original host-only encoder/forward fixture; all 49 assertions are retained.",
+    "Confidence decoder runs Core ML host methods; ONNX and six PyTorch/TileLang-only checks are excluded."
   ],
-  "artifact_audit": "benchmarks/results/official-v041-artifact-audit.json",
-  "real_model_validation": "benchmarks/results/v051-MODEL-PRECISION-validation.json",
-  "migration_status": "published_and_verified",
-  "progress_report": "docs/UPSTREAM_0412_PROGRESS.json",
-  "qualification_report": "docs/QUALIFICATION_0_5_1.md",
-  "public_api_audit": "docs/UPSTREAM_0412_API_AUDIT.json",
-  "package_gates": "benchmarks/results/release-v051.json",
-  "release_status": "published_and_verified",
-  "release_version": "0.5.1",
-  "failed_unpublished_tag": "v0.5.0",
-  "hub_release_receipt": "benchmarks/results/hub-v051-release.json"
+  "migration_status": "linux_macos_ci_passed_independently_reviewed",
+  "public_api_audit": "docs/UPSTREAM_0417_API_AUDIT.json",
+  "migration_report": "docs/MIGRATION_0_4_17.md",
+  "historical_v0412_evidence": {
+    "artifact_audit": "benchmarks/results/official-v041-artifact-audit.json",
+    "real_model_validation": "benchmarks/results/v051-MODEL-PRECISION-validation.json",
+    "progress_report": "docs/UPSTREAM_0412_PROGRESS.json",
+    "qualification_report": "docs/QUALIFICATION_0_5_1.md",
+    "package_gates": "benchmarks/results/release-v051.json",
+    "release_status": "published_and_verified",
+    "release_version": "0.5.1",
+    "failed_unpublished_tag": "v0.5.0",
+    "hub_release_receipt": "benchmarks/results/hub-v051-release.json"
+  },
+  "release_status": "not_requested",
+  "previous_upstream_commit": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+  "upstream_delta": {
+    "files": 26,
+    "additions": 1038,
+    "deletions": 166,
+    "path": "laya/"
+  },
+  "inventory": [
+    {
+      "upstream": "laya/__init__.py",
+      "target": "laya_coreml/__init__.py",
+      "status": "excluded_version_only",
+      "scope": "Upstream package version only; retain laya-coreml 0.5.1."
+    },
+    {
+      "upstream": "laya/_eval_policy.py",
+      "target": "laya_coreml/_eval_policy.py",
+      "status": "ported",
+      "scope": "Unreadable or excessively nested policy files report EvalError."
+    },
+    {
+      "upstream": "laya/agent.py",
+      "target": "laya_coreml/runtime.py",
+      "status": "ported",
+      "scope": "Track answer identity and prediction snapshots before end hooks; preserve original scan spans after reordering, omit edited/cloned/shared attribution, detect missing answers, normalize probabilities in place."
+    },
+    {
+      "upstream": "laya/calibrate.py",
+      "target": "laya_coreml/calibrate.py",
+      "status": "ported",
+      "scope": "Name invalid target_error values while preserving comparable numeric types."
+    },
+    {
+      "upstream": "laya/cli.py",
+      "target": "laya_coreml/router_cli.py",
+      "status": "ported",
+      "scope": "Routing --explain; BOM-aware questions/batch inputs; path-specific JSON, encoding, depth and OS errors."
+    },
+    {
+      "upstream": "laya/common.py",
+      "target": "laya_coreml/common.py",
+      "status": "ported",
+      "scope": "Scalar confidence clipping avoids NumPy dispatch while retaining vector entropy order."
+    },
+    {
+      "upstream": "laya/confidence.py",
+      "target": "laya_coreml/confidence.py",
+      "status": "ported",
+      "scope": "Jev probability coercion handles OverflowError."
+    },
+    {
+      "upstream": "laya/evals.py",
+      "target": "laya_coreml/evals.py",
+      "status": "ported",
+      "scope": "Validate dataset row shape/read errors, reject bool confidence, require one batch result per row, report incomparable regression metrics."
+    },
+    {
+      "upstream": "laya/evals_cli.py",
+      "target": "laya_coreml/evals_cli.py",
+      "status": "ported",
+      "scope": "Explicit accuracy thresholds require the exact metric named."
+    },
+    {
+      "upstream": "laya/evidence.py",
+      "target": "laya_coreml/evidence.py",
+      "status": "ported",
+      "scope": "BOM-aware evidence artifacts and path-specific nesting failures."
+    },
+    {
+      "upstream": "laya/hooks.py",
+      "target": "laya_coreml/hooks.py",
+      "status": "ported",
+      "scope": "Validate timeout coercion and reliability data; preserve full soft stability and NumPy calibration cutoffs; keep semantic labels when renaming empty descriptions."
+    },
+    {
+      "upstream": "laya/integrations/_guard.py",
+      "target": "laya_coreml/integrations/_guard.py",
+      "status": "ported",
+      "scope": "Validate response/answer/numeric/probability shapes with named malformed-response errors."
+    },
+    {
+      "upstream": "laya/integrations/agno.py",
+      "target": "laya_coreml/integrations/agno.py",
+      "status": "ported",
+      "scope": "Fail closed on malformed remote and nested decisions."
+    },
+    {
+      "upstream": "laya/integrations/crewai.py",
+      "target": "laya_coreml/integrations/crewai.py",
+      "status": "ported",
+      "scope": "Fail closed on malformed remote and nested decisions."
+    },
+    {
+      "upstream": "laya/integrations/langchain.py",
+      "target": "laya_coreml/integrations/langchain.py",
+      "status": "ported",
+      "scope": "Reject non-object remote response and answers."
+    },
+    {
+      "upstream": "laya/integrations/llamaindex.py",
+      "target": "laya_coreml/integrations/llamaindex.py",
+      "status": "ported",
+      "scope": "Validate response, choice and ranked probabilities while preserving native port framework compatibility."
+    },
+    {
+      "upstream": "laya/integrations/tools.py",
+      "target": "laya_coreml/integrations/tools.py",
+      "status": "ported",
+      "scope": "Malformed tool decisions/probabilities take the existing error or fallback path."
+    },
+    {
+      "upstream": "laya/lang.py",
+      "target": "laya_coreml/lang.py",
+      "status": "ported",
+      "scope": "Unicode letter compatibility table, bisected script ranges, English/Vietnamese heuristics and opt-in diagnostic stage/reason/source paths."
+    },
+    {
+      "upstream": "laya/mcp/remote.py",
+      "target": "laya_coreml/mcp/remote.py",
+      "status": "ported",
+      "scope": "Validate explicit/environment User-Agent and send it on HTTP calls; default uses local package version."
+    },
+    {
+      "upstream": "laya/mcp/server.py",
+      "target": "laya_coreml/mcp/server.py",
+      "status": "ported",
+      "scope": "Document LAYA_USER_AGENT."
+    },
+    {
+      "upstream": "laya/onnx_agent.py",
+      "target": "laya_coreml/runtime.py (shared host behavior only)",
+      "status": "excluded_backend_duplicate",
+      "scope": "ONNX implementation excluded; shared long-attribution and probability changes are implemented once in runtime.py."
+    },
+    {
+      "upstream": "laya/revisions.py",
+      "target": "laya_coreml/revisions.py",
+      "status": "ported",
+      "scope": "Reject nested Windows drive-anchored digest paths."
+    },
+    {
+      "upstream": "laya/router.py",
+      "target": "laya_coreml/router.py",
+      "status": "ported",
+      "scope": "Forward opt-in explain on route/route_batch without changing explicit override routing."
+    },
+    {
+      "upstream": "laya/serve.py",
+      "target": "laya_coreml/serve.py",
+      "status": "ported",
+      "scope": "Bound body read time and release admission on 408; hide schema/docs when authenticated; enforce batch token budget even with caller batch size; report invalid tournament labels as 422."
+    },
+    {
+      "upstream": "laya/shortlist.py",
+      "target": "laya_coreml/shortlist.py",
+      "status": "ported",
+      "scope": "Validate missing tok/model before importing the fitting backend; preserve the explicit Core ML encoder-output refusal and external embed_fn path."
+    },
+    {
+      "upstream": "laya/structured.py",
+      "target": "laya_coreml/structured.py",
+      "status": "ported",
+      "scope": "Reject boolean numeric bounds; ignore non-mapping answer entries during projection/details."
+    }
+  ],
+  "historical_manifest": "docs/UPSTREAM_0412_PORT.json",
+  "additional_boundary_changes": [
+    "Native CLI reads UTF-8 BOM question files and names read/parse errors before model loading; flags and native load options are unchanged."
+  ],
+  "local_validation": {
+    "python": "3.12.14",
+    "lint": "passed (cached Ruff 0.15.8)",
+    "format": "passed",
+    "compileall": "passed",
+    "public_api_audit": "345 entries, zero unclassified differences",
+    "native_cli_isolated_smoke": "6 passed; loader mocked",
+    "pytest": "not run: dependency installation did not complete",
+    "build_twine_wheel_smoke": "not run: dependency installation did not complete",
+    "native_macOS_and_real_model_checks": "not run locally; remote CI recorded separately",
+    "review_gate": "two independent source reviews found no blockers"
+  },
+  "remote_ci": {
+    "url": "https://github.com/Omicron0314/laya-coreml/actions/runs/40825520186",
+    "source_commit": "23a317b62b77227e944cefe9c68bab55ca6f41a0",
+    "conclusion": "success",
+    "linux": {"passed": 386, "skipped": 3},
+    "macos": {"passed": 389, "skipped": 0},
+    "public_api_audit": "345 entries, zero unclassified differences on both platforms",
+    "build_and_strict_twine": "passed on both platforms",
+    "limits": "Full-checkpoint stability, inference-only wheel smoke and performance/energy benchmarks not rerun"
+  }
 }

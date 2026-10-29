@@ -134,6 +134,12 @@ def main():
             "# --------------------------------------------------------------- BaseHook", start
         )
         source = source[:start] + source[end:]
+    if path.stem == "test_confidence":
+        # This host suite also embeds six PyTorch/TileLang padding implementation
+        # and documentation checks. Neither backend is part of the Core ML port.
+        start = source.index("# ------------------------------------------- tl_kernels'")
+        end = source.index("# --------------------------------------- DecisionResult's", start)
+        source = source[:start] + source[end:]
     tree = ast.parse(source)
     if path.stem == "test_hooks_api":
 
@@ -230,9 +236,9 @@ def main():
                 and str(node.value.args[0].value).startswith("train subcommand:")
             )
         ]
-    if path.stem in {"test_structured", "test_structured_api"}:
-        # These two host suites also assert the existence of one ONNX-only method.
-        # Exclude that backend's import/assertion; every host assertion is unchanged.
+    if path.stem in {"test_structured", "test_structured_api", "test_confidence"}:
+        # These host suites inspect ONNX methods or run the ONNX decoder.
+        # Exclude that backend's import/assertions; every host assertion is unchanged.
         tree.body = [
             node
             for node in tree.body
@@ -245,7 +251,7 @@ def main():
                 )
             )
         ]
-    if path.stem in {"test_structured", "test_structured_api"}:
+    if path.stem in {"test_structured", "test_structured_api", "test_confidence"}:
         for node in ast.walk(tree):
             if isinstance(node, ast.Tuple):
                 node.elts = [
@@ -263,6 +269,39 @@ def main():
     module.__file__ = str(path)
     sys.modules["__main__"] = module
     exec(compile(tree, str(path), "exec"), module.__dict__)
+    if path.stem == "_long_attribution":
+        # Run the shared upstream attribution cases with its unchanged host fixture.
+        # The fixture stubs encoding/forward/decoding, never native tensor execution.
+        fixture_path = path.with_name("test_predict_long.py")
+        fixture_tree = ast.parse(fixture_path.read_text(encoding="utf-8"))
+        fixture_tree.body = [
+            node
+            for node in fixture_tree.body
+            if (
+                isinstance(node, (ast.ClassDef, ast.FunctionDef))
+                and node.name in {"_Tok", "make_real_agent"}
+            )
+            or (
+                isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "NO_STATE_STATS" for t in node.targets)
+            )
+        ]
+        import threading
+
+        import numpy as np
+
+        from laya_coreml.agent import Agent
+
+        fixture_scope = {"Agent": Agent, "np": np, "threading": threading}
+        exec(compile(fixture_tree, str(fixture_path), "exec"), fixture_scope)
+        checked = []
+
+        def check(name, actual, expected):
+            assert actual == expected, (name, actual, expected)
+            checked.append(name)
+
+        module.check_long_attribution(fixture_scope["make_real_agent"], check)
+        print("%d unchanged upstream long-attribution checks passed" % len(checked))
     if any(name.startswith("test_") and callable(value) for name, value in module.__dict__.items()):
         import tempfile
 

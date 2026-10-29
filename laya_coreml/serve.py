@@ -37,6 +37,8 @@ env var                    meaning                                        defaul
 ``LAYA_IDLE_UNLOAD_SECONDS`` unload checkpoints after this many idle     0 (off)
                            seconds; the next request loads them again.
 ``LAYA_API_KEY``           if set, require ``Authorization: Bearer <it>``  (none)
+                           on every route, and do not serve the
+                           interactive docs or the OpenAPI schema
 ``LAYA_ROOT_PATH``         public URL prefix behind a reverse proxy        (none)
 ``LAYA_LOG_LEVEL``         uvicorn log level                              info
 ``LAYA_MAX_CONCURRENT``    cap on requests past auth at once; excess      16
@@ -48,6 +50,9 @@ env var                    meaning                                        defaul
                            explicit ``model=`` like a built-in.
 ``LAYA_MAX_TOKEN_BUDGET``  cap on per-request max_len / head_max_len       8192
 ``LAYA_MAX_BATCH_TOKENS``  cap on batch forward tokens (states x q x len)  131072
+``LAYA_BODY_READ_TIMEOUT`` seconds a request may spend delivering its body   10
+                           before the server answers 408 and releases its
+                           admission slot (see below)
 ``LAYA_JEV_STRICT``        if set, serve the strict Jev wire contract: no   0
                            root `routing`, no per-answer `action` /
                            `answer_confidence`, no `confidence` on noul
@@ -92,6 +97,17 @@ MAX_QUESTIONS = 64
 MAX_STATE_CHARS = 50000
 MAX_BATCH_STATES = 64
 MAX_BODY_BYTES = 2 * 1024 * 1024
+# How long a request may take to deliver its body. Admission is taken BEFORE the body is read --
+# that ordering is deliberate, it is what bounds how many bodies are buffered at once -- but it also
+# means a client that sends a request head and one partial body chunk and then goes quiet holds one
+# of the `LAYA_MAX_CONCURRENT` slots for as long as the socket stays open. There is no deadline at
+# any other layer: uvicorn has no request-body timeout, and `async for chunk in request.stream()`
+# waits as long as the peer does. So without the bound below, `LAYA_MAX_CONCURRENT` stalled uploads
+# (16 by default, a few bytes each) keep BOTH decision routes answering 503 for as long as the
+# attacker keeps the sockets open, while `/health` -- which takes no admission slot -- keeps telling
+# the orchestrator the process is healthy, so nothing ever restarts it. Bounding the read turns an
+# indefinitely held slot into a slot held for at most this long, and releases it either way.
+DEFAULT_BODY_READ_TIMEOUT = 10.0
 # `/v1/systemone/batch` collates `states x questions` rows into ONE tensor, and each of the caps
 # above bounds only one factor: 64 states of 64 questions is 4096 rows from a 4.1 KB body, with every
 # documented limit satisfied, and `batch_size` defaults to `None`, which `predict_batch` documents as
@@ -290,7 +306,16 @@ def _tournament_plan(questions: Any, group: int) -> Optional[Dict[str, List[str]
             continue
         criteria = question.get("criteria")
         if isinstance(criteria, (dict, list)) and len(criteria) > group:
-            large[qid] = [label for label, _ in _criteria_items(criteria)]
+            # `_criteria_items` de-duplicates its labels through a set, so an unhashable label -- a
+            # `criteria` written as a list of JSON arrays/objects -- raises a bare `TypeError` here.
+            # This plan runs before `router.predict`, so core's `Agent._check_question` (which refuses
+            # a non-scalar label with a `ValueError` naming the question) has not seen it yet, and the
+            # `TypeError` fell through the endpoint's catch-all to a 500. Refuse it as the same
+            # `ValueError` the sibling duplicate/empty-label paths already raise, so it is a 422.
+            try:
+                large[qid] = [label for label, _ in _criteria_items(criteria)]
+            except TypeError as error:
+                raise ValueError("question %r: %s" % (qid, error)) from None
     if not large:
         return None
     unmappable = [
@@ -448,6 +473,18 @@ def _resolve_max_concurrent() -> int:
     except ValueError:
         return DEFAULT_MAX_CONCURRENT
     return n if n > 0 else DEFAULT_MAX_CONCURRENT
+
+
+def _resolve_body_read_timeout() -> float:
+    """Seconds a request may spend delivering its body, from LAYA_BODY_READ_TIMEOUT."""
+    raw = os.environ.get("LAYA_BODY_READ_TIMEOUT")
+    if not raw or not raw.strip():
+        return DEFAULT_BODY_READ_TIMEOUT
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_BODY_READ_TIMEOUT
+    return value if 0.0 < value < float("inf") else DEFAULT_BODY_READ_TIMEOUT
 
 
 def _resolve_tournament_group() -> int:
@@ -1099,7 +1136,7 @@ def _has_lone_surrogate(value: Any) -> bool:
     return False
 
 
-async def _read_body_capped(request: Any) -> bytes:
+async def _read_body_capped(request: Any, timeout: Optional[float] = None) -> bytes:
     """Read the request body, refusing to buffer more than ``MAX_BODY_BYTES``.
 
     ``Content-Length`` cannot be the only gate. It is a value the client chooses,
@@ -1108,24 +1145,49 @@ async def _read_body_capped(request: Any) -> bytes:
     read into memory in full, whatever its size. The body is streamed here and
     abandoned as soon as it exceeds the cap, so the limit holds for every framing
     rather than only for clients that announce their length honestly.
+
+    The read is also bounded in TIME (``LAYA_BODY_READ_TIMEOUT``, 10 s), because the
+    admission slot is taken before this runs: a peer that sends a request head and
+    then stops writing would otherwise hold one of the ``LAYA_MAX_CONCURRENT`` slots
+    for as long as it keeps the socket open. Nothing below the application layer
+    bounds that -- uvicorn has no request-body timeout -- so without this a handful
+    of idle sockets take the whole decision API out of service while ``/health``,
+    which takes no slot, still reports the process as healthy. A body that does not
+    arrive in time answers ``408`` and the slot is released by the unwinding
+    ``async with _admit()``, exactly as a ``413`` already was.
     """
+    import asyncio
+
     from fastapi import HTTPException
 
-    total = 0
-    chunks = []
-    async for chunk in request.stream():
-        if not chunk:
-            continue
-        total += len(chunk)
-        if total > MAX_BODY_BYTES:
-            # Stop reading rather than draining the rest: the peer is already over
-            # the limit and nothing further can make the request acceptable.
-            raise HTTPException(status_code=413, detail="request body too large")
-        chunks.append(chunk)
-    return b"".join(chunks)
+    async def collect() -> bytes:
+        total = 0
+        chunks = []
+        async for chunk in request.stream():
+            if not chunk:
+                continue
+            total += len(chunk)
+            if total > MAX_BODY_BYTES:
+                # Stop reading rather than draining the rest: the peer is already over
+                # the limit and nothing further can make the request acceptable.
+                raise HTTPException(status_code=413, detail="request body too large")
+            chunks.append(chunk)
+        return b"".join(chunks)
+
+    try:
+        return await asyncio.wait_for(
+            collect(), timeout=_resolve_body_read_timeout() if timeout is None else timeout
+        )
+    except asyncio.TimeoutError:
+        # Cancelling `collect()` cancels the stream read, so the peer's socket is not
+        # left half-consumed; the response below is what it sees.
+        raise HTTPException(
+            status_code=408,
+            detail="request body was not received in time",
+        ) from None
 
 
-async def _read_json_body(request: Any) -> Any:
+async def _read_json_body(request: Any, timeout: Optional[float] = None) -> Any:
     """Read the request body and decode JSON, enforcing size caps and parse error guards."""
     from fastapi import HTTPException
 
@@ -1135,7 +1197,7 @@ async def _read_json_body(request: Any) -> Any:
                 raise HTTPException(status_code=413, detail="request body too large")
         except ValueError:
             pass
-    raw = await _read_body_capped(request)
+    raw = await _read_body_capped(request, timeout)
     try:
         return json.loads(raw)
     except (ValueError, RecursionError):
@@ -1224,6 +1286,7 @@ def create_app(router: Optional[Any] = None):
     # gate is still joined only after the body is complete, so a slow client
     # holds an admission slot but never an inference slot.
     max_concurrent = _resolve_max_concurrent()
+    body_read_timeout = _resolve_body_read_timeout()
     admission: Optional[asyncio.Semaphore] = None
 
     idle_unload_seconds = _resolve_idle_unload_seconds()
@@ -1288,11 +1351,20 @@ def create_app(router: Optional[Any] = None):
             pool.shutdown(wait=True, cancel_futures=True)
             pool_closed = True
 
+    # Auth is enforced per route below, and FastAPI's own documentation routes are not written by
+    # this module -- on a deployment with LAYA_API_KEY set they answered 200 to an unauthenticated
+    # caller, publishing the whole API shape and an interactive console next to a service the
+    # operator had locked down. When a key is configured there is no way to authenticate them
+    # without adding a second auth path, so they are not served at all; run the server without a
+    # key (or read docs/http-api.md) when you need the schema.
     app = FastAPI(
         title="laya-serve",
         summary="Laya System-1 decisions over the TypeSafe Jev /v1/systemone protocol",
         root_path=os.environ.get("LAYA_ROOT_PATH", ""),
         lifespan=lifespan,
+        docs_url=None if api_key else "/docs",
+        redoc_url=None if api_key else "/redoc",
+        openapi_url=None if api_key else "/openapi.json",
     )
 
     # Compared as bytes, not str. `hmac.compare_digest` raises TypeError when a str
@@ -1399,7 +1471,7 @@ def create_app(router: Optional[Any] = None):
     async def _systemone_inner(request: Request):
         nonlocal gate
         _mark_request()
-        body = await _read_json_body(request)
+        body = await _read_json_body(request, body_read_timeout)
         if not isinstance(body, dict) or "questions" not in body:
             raise HTTPException(
                 status_code=400, detail="request body must be an object with a 'questions' field"
@@ -1513,7 +1585,7 @@ def create_app(router: Optional[Any] = None):
     async def _systemone_batch_inner(request: Request):
         nonlocal gate
         _mark_request()
-        body = await _read_json_body(request)
+        body = await _read_json_body(request, body_read_timeout)
         if not isinstance(body, dict) or "questions" not in body or "states" not in body:
             raise HTTPException(
                 status_code=400,
@@ -1574,19 +1646,19 @@ def create_app(router: Optional[Any] = None):
         if min_confidence is not None:
             call_kwargs["min_confidence"] = min_confidence
         batch_size = _validate_batch_size_param(body)
+        # The token budget is a property of ONE forward pass, so the caller may shape the passes but
+        # never widen one past the budget: a body is capped at 64 states x 64 questions x 8192 tokens,
+        # and a caller-supplied `batch_size` used to be forwarded verbatim, so `batch_size=10**18`
+        # meant "collate all of it at once" and opted out of the only guard that bounds a pass. Take
+        # the smaller of the two. `planned` is `None` when the request already fits, which is the
+        # case where nothing was going to be passed anyway.
+        planned = _batch_chunk_size(
+            len(states), len(questions) if isinstance(questions, dict) else 0, body.get("max_len")
+        )
         if batch_size is not None:
-            call_kwargs["batch_size"] = batch_size
-        else:
-            # The caller's own `batch_size` always wins -- they asked for a shape. Otherwise split the
-            # batch so one forward pass stays inside the token budget. `None` when it already fits, so
-            # nothing is passed and the call is the one it has always been.
-            planned = _batch_chunk_size(
-                len(states),
-                len(questions) if isinstance(questions, dict) else 0,
-                body.get("max_len"),
-            )
-            if planned is not None:
-                call_kwargs["batch_size"] = planned
+            call_kwargs["batch_size"] = batch_size if planned is None else min(batch_size, planned)
+        elif planned is not None:
+            call_kwargs["batch_size"] = planned
         sort_by_length = _validate_sort_by_length_param(body)
         if sort_by_length:
             # Only `True` is forwarded: `predict_batch`'s own default is `False`, and an attached

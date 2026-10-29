@@ -212,12 +212,35 @@ def _call_remote(
     opener = urllib.request.build_opener(_SameOriginRedirectHandler())
     try:
         with opener.open(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            parsed = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"Laya server error {e.code}: {body}") from e
     except Exception as e:
         raise RuntimeError(f"Failed to connect to Laya server at {url}: {e}") from e
+    # A remote laya-serve answers with a JSON object, but `json.loads` accepts any top-level value:
+    # a gateway, a mis-pointed `base_url`, or a proxy error page can reply with a bare array, string,
+    # number or `true`/`null`. Consumers read the result with `result.get("answers", …)`, so a
+    # non-object leaks ``AttributeError: 'list' object has no attribute 'get'`` instead of the
+    # ``RuntimeError`` every other remote failure here already raises. The check sits after the
+    # ``try`` so it is not swallowed by the catch-all connect handler above.
+    if not isinstance(parsed, dict):
+        raise RuntimeError(
+            f"Malformed decision response from Laya server at {url}: "
+            f"expected a JSON object, got {type(parsed).__name__}"
+        )
+    # `parsed` is an object now, but its `answers` field is the same arbitrary JSON: a gateway can
+    # answer `{"answers": []}`. The consumers read it four ways -- `result["answers"][question_id]`,
+    # `.get("answers", {}).get("intent", …)`, `.items()` and one that hands it back to the caller --
+    # so a non-object leaks TypeError/AttributeError, or worse a non-mapping into user code, past the
+    # fail-closed paths. This is the guard above one level deeper. A missing `answers` is left alone:
+    # `LayaRouter` already reports that as its own KeyError, and the guardrail as no violations.
+    if "answers" in parsed and not isinstance(parsed["answers"], dict):
+        raise RuntimeError(
+            f"Malformed decision response from Laya server at {url}: "
+            f"'answers' must be a JSON object, got {type(parsed['answers']).__name__}"
+        )
+    return parsed
 
 
 _DEFAULT_ROUTER = None

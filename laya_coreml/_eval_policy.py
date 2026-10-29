@@ -21,11 +21,19 @@ def _finite_number(value: Any) -> bool:
 
 
 def load_policy(path: str) -> Dict[str, Any]:
-    """Read and validate a small, versioned JSON gate before a checkpoint is loaded."""
+    """Read and validate a small, versioned JSON gate before a checkpoint is loaded.
+
+    A `RecursionError` is one of the ways a document cannot be read: `json` reports a nesting depth
+    it will not walk as a stack overflow, not as a `ValueError`. Leaving it out here made a policy
+    too deep to parse escape `laya-evals`' usage-error handler as a traceback with exit 1 -- the
+    code the CLI keeps for "a threshold or a tolerance failed" -- which `docs/evals.md` says may
+    only be exit 2, before a checkpoint loads. `_load_report` in `laya/evals_cli.py` already reads
+    a caller's JSON this way.
+    """
     try:
         with open(path, "r", encoding="utf-8") as handle:
             policy = json.load(handle)
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise evals.EvalError("invalid gate policy %r: %s" % (path, exc)) from exc
     if not isinstance(policy, dict) or set(policy) != {"version", "rules"}:
         raise evals.EvalError("gate policy needs exactly 'version' and 'rules'")

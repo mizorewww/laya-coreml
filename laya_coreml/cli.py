@@ -59,6 +59,13 @@ def main():
     else:
         from pathlib import Path
 
+        try:
+            questions = json.loads(Path(args.questions).read_text(encoding="utf-8-sig"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as error:
+            parser.error(
+                "--questions file %s cannot be read as UTF-8 JSON: %s" % (args.questions, error)
+            )
+
         from .agent import load
 
         agent = load(
@@ -69,7 +76,7 @@ def main():
         )
         print(
             json.dumps(
-                agent.predict(args.state, json.loads(Path(args.questions).read_text())),
+                agent.predict(args.state, questions),
                 ensure_ascii=False,
                 indent=2,
             )
