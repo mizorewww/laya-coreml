@@ -71,25 +71,3 @@ python scripts/record_terminal.py --log artifacts/session.ansi -- \
   laya-coreml-snake --model ./models/ane --seed 7 --fps 12 \
   --duration 75 --record snake.jsonl
 ```
-
-## Suggested post text
-
-English:
-
-> A 322M decision model playing Snake on my Mac's Neural Engine. Zero generated
-> tokens. Offline inference, live probabilities, and a visible safety layer.
-> Core ML runtime, open weights, reproducible benchmarks:
-> https://github.com/mizorewww/laya-coreml
-
-中文：
-
-> 把一个 3.22 亿参数的决策模型搬到了 Mac 的 Neural Engine 上，用它实时玩贪吃蛇。
-> 概率实时变化，0 个生成 token，下载模型后完全离线。视频是原速实录，安全层和干预
-> 次数直接显示在界面上。代码、权重、PyPI 包和完整 benchmark 都已开放：
-> https://github.com/mizorewww/laya-coreml
-
-For a performance-focused follow-up, use the exact claim: **4.98 ms P50 for one
-short multilingual decision, with 2.78× lower estimated system energy per
-decision than compiled MLX FP16 in the paired M3 Max experiment**. Link the
-[measurement method](ANE_BENCHMARKS.md), keep its workload qualification, and do
-not label it a Snake frame time or a 10× result.

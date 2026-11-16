@@ -1,6 +1,6 @@
 # 0.5.1 — upstream v0.4.12 migration and compiled-instance stability
 
-This release includes the migration described in RELEASE_0_5_0.md. The initial
+This release includes the upstream v0.4.12 migration. The initial
 0.5.0 tag failed the macOS release gate and was never published to PyPI.
 Its tag remains unchanged for traceability; 0.5.1 is the corrected release.
 

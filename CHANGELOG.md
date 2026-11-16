@@ -41,7 +41,7 @@ Follows upstream **v0.4.12** (`ffc14201`). [Release notes](docs/RELEASE_0_5_1.md
 
 ## 0.5.0 — tagged 2026-10-20, not published
 
-Upstream v0.4.12 migration ([notes](docs/RELEASE_0_5_0.md), [qualification](docs/QUALIFICATION_0_4_12.md)).
+Upstream v0.4.12 migration.
 The tag failed the macOS release gate and was never uploaded to PyPI; 0.5.1 replaces it.
 
 - Native B=1/2/4/16 adaptive batch bundles, dense sequence buckets and a bounded shape cache.

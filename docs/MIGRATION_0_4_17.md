@@ -69,7 +69,7 @@ public API and is pinned by its own regression tests, which fail on the unfixed 
 
 ## Complete source inventory
 
-The machine-readable [inventory](UPSTREAM_PORT.json) records every changed upstream
+The table below records every changed upstream
 Python file. The [API audit](UPSTREAM_0417_API_AUDIT.json) checks signatures and root
 exports; behavioral evidence comes from the original assertions and differential tests.
 
@@ -135,8 +135,7 @@ are recorded below.
 
 ## Historical evidence
 
-[UPSTREAM_0412_PORT.json](UPSTREAM_0412_PORT.json) preserves the previous manifest.
-The v0.4.12 API audit, progress and qualification reports, 0.5.1 release receipts,
+The 0.5.1 release receipts and qualification report,
 model precision/latency reports and Snake benchmarks retain their original scope.
 They do not qualify this new source revision. Current documentation links to
 those artifacts as historical evidence, without rewriting their recorded results.

@@ -11,8 +11,7 @@ The source target of this historical synchronization was official v0.4.12, commi
 release. The 341-entry public API audit and real-logit calibration compatibility
 campaign have passed. Real optional-framework checks cover LangChain/LangGraph,
 LlamaIndex, CrewAI and Agno, including the LlamaIndex compatibility repair below.
-Final native performance and package qualification is recorded in
-`UPSTREAM_0412_PROGRESS.json`; historical experiments remain separately labeled.
+Historical experiments remain separately labeled.
 The host update includes calibration correctness fixes, schema singleton constraints,
 shortlist/tournament ordering, OptionStabilityHook, agreement/tournament evaluation,
 Agno/tool integration and HTTP/MCP updates.
@@ -284,4 +283,4 @@ baseline environment needed correction.
 
 Actual optional-framework smoke tests use LangChain/LangGraph, LlamaIndex, CrewAI and Agno with a deterministic local decision runner and forbidden network access. Both native packages pass all eight integration checks. The LlamaIndex adapter fixes an upstream compatibility bug: current llama-index-core exports SingleSelection rather than ToolSelection and requires prompt-mixin abstract methods. Selectors expose no LLM prompt templates; configure typed instructions directly. Both single and multi selectors now inherit the actual framework BaseSelector. See benchmarks/results/v0412-real-integrations.json for versions and scope. Both dependency lockfiles now include the new extras.
 
-Final local qualification is complete for the pinned upstream and measured workloads. See [the consolidated evidence](QUALIFICATION_0_4_12.md) for exact scope, paired timing, original slower runs, package checks and resource limitations. The migration remains unpublished.
+Final local qualification is complete for the pinned upstream and measured workloads. See the [0.5.1 qualification](QUALIFICATION_0_5_1.md) and the sibling laya-mlx `docs/QUALIFICATION_0_4_12.md` for exact scope, paired timing, original slower runs, package checks and resource limitations. The migration remains unpublished.
