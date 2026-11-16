@@ -54,6 +54,6 @@ include environment, precision, input/checkpoint/source hashes and every timing 
 The earlier v0.4.12 report remains development evidence for the previous cache loader.
 Final distribution and public-install receipts are in `benchmarks/results/release-v051.json`.
 
-The unchanged upstream idle-window timing test was also reproduced directly against the original upstream code on the same macOS CI runner during MLX post-release checks. See [the retained comparison](https://github.com/mizorewww/laya-mlx/blob/main/docs/CI_TIMING.md). This test instability is documented separately from the successful Core ML release pipeline and real-model qualification.
+The unchanged upstream idle-window timing test was also reproduced directly against the original upstream code on the same macOS CI runner during MLX post-release checks. See [the retained comparison](https://github.com/mizorewww/laya-mlx/blob/main/docs/UPSTREAM.md#idle-window-timing). This test instability is documented separately from the successful Core ML release pipeline and real-model qualification.
 
-Post-release CI maintenance: the idle-window fixture now measures its original 200 ms deadline on the worker, avoiding a scheduling-dependent observer assertion. The explicit test adaptation and early-unload rejection checks are documented in [CI timing](CI_TIMING.md). Production package code is unchanged.
+Post-release CI maintenance: the idle-window fixture now measures its original 200 ms deadline on the worker, avoiding a scheduling-dependent observer assertion. The explicit test adaptation and early-unload rejection checks are documented in [the compatibility record](UPSTREAM.md#idle-window-test-adaptation). Production package code is unchanged.

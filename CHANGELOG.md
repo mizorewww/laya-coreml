@@ -3,6 +3,35 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## 0.7.0 — 2026-11-16
+
+Follows upstream **v0.4.34** (`80a1da1f`). [Compatibility record](docs/UPSTREAM.md).
+Model bundles are unchanged; no reconversion is needed.
+
+- **Routing without inference:** `POST /v1/route` on `laya-coreml-serve`, and `explain` on the MCP
+  `laya_route` and `laya_route_batch` tools, return the decision and its language diagnostic.
+- **Router vega lane:** `Router(vega=agent)` sends images, audio, video, over-long states and
+  questions with fitted heads to an already built vega agent. laya-coreml does not include the
+  vegaml engine: `Agent(vegaml=True)`, `load(vegaml=True)` and `Router(vega=True)` raise, and the
+  lane is off by default.
+- **LangChain:** `LayaRouter(decision_policy="native")` follows an answer's `auto`/`review` route.
+  `LayaToolSelector` accepts a per-bucket `min_confidence` map.
+- **Stricter validation (may raise where 0.6.1 accepted input):** a non-integer `batch_size`,
+  malformed checkpoint source pairs, decisions naming an agent or choice outside the list,
+  non-array `anyOf`/`oneOf`, wide integers in calibration bins, and media keys in HTTP bodies.
+- **Fixes:** temperatures, confidences and guard values written as integers wider than a double no
+  longer crash a load or a decision; BOM-prefixed eval datasets and reports are read;
+  `OptionStabilityHook` no longer counts a rename probe identical to the original question;
+  an over-nested `LAYA_SHA256_DIGESTS` is a configuration error.
+- **Faster:** calibration fitting is vectorized, and routing skips hook dispatch when no hook
+  implements `on_route`.
+- The server logs one warning per request when a state was truncated.
+- Docs and tests: one evergreen `docs/UPSTREAM.md` replaces the per-version migration records;
+  local tests that duplicated the pinned upstream suites were removed.
+- Validation: full test suite on macOS; the three published adaptive FP16 bundles re-checked
+  against the golden fixture (63/63 selected answers, 100 stable calls each). Performance figures
+  were not re-measured for this release.
+
 ## 0.6.1 — 2026-10-29
 
 - **Fix:** `predict_batch` no longer groups integer or boolean keys with their string equivalents
@@ -14,7 +43,7 @@ behavior it follows. Detailed records live in [docs/](docs/README.md).
 
 ## 0.6.0 — 2026-10-29
 
-Follows upstream **v0.4.17** (`fe9a6c35`). [Migration record](docs/MIGRATION_0_4_17.md).
+Follows upstream **v0.4.17** (`fe9a6c35`).
 Model bundles are unchanged; no reconversion is needed.
 
 - **Language routing:** `detect_language(..., explain=True)` and `Router.route(..., explain=True)`
@@ -50,7 +79,7 @@ The tag failed the macOS release gate and was never uploaded to PyPI; 0.5.1 repl
 
 ## 0.4.0 — 2026-10-10
 
-Aligns host behavior with upstream **v0.4.1** ([migration guide](docs/MIGRATION_0_4.md)).
+Aligns host behavior with upstream **v0.4.1**.
 
 - `Router()` keeps two models resident and falls back to multilingual; scalar choice labels,
   `option_order`, `predict_batch`, `predict_long`, hooks, calibration and evaluation follow upstream.

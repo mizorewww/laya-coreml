@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: NandhaKishorM/laya
-          ref: fe9a6c35023a7d94102e7feaaeaae8857d9d1b07
+          ref: 80a1da1fa5448ea12163f4d977935625a0aea670
           path: .upstream
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -33,7 +33,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: python scripts/audit_public_api.py --package laya_coreml
-      - run: git diff --exit-code -- docs/UPSTREAM_0417_API_AUDIT.json
+      - run: git diff --exit-code -- docs/UPSTREAM_API_AUDIT.json
       - run: python -u -X faulthandler -m pytest -vv -s
       - name: Show native crash reports
         if: failure() && runner.os == 'macOS'

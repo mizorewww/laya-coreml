@@ -54,3 +54,13 @@ def test_read_temperatures_matches_official_clamping(cfg):
 def test_temperature_shape_matches_official():
     with pytest.raises(ValueError, match="list of 3"):
         read_temperatures({"temperature": [1.0, 1.0]})
+
+
+@pytest.mark.parametrize("value", [10**400, -(10**400), 2**1024])
+def test_temperature_wider_than_a_double_loads_with_neutral_fallback(value):
+    cfg = {"temperature": [value, 1.1, 2.0], "temperature_by_options": {"choice:2": value}}
+    with pytest.warns(RuntimeWarning, match=str(value)):
+        temperature, by_options, raw, raw_by_options = read_temperatures(cfg)
+    assert temperature == [1.0, 1.1, 2.0]
+    assert by_options == {"choice:2": 1.0}
+    assert raw[0] == value and raw_by_options["choice:2"] == value

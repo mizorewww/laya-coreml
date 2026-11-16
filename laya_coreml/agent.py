@@ -15,6 +15,16 @@ from .tokenizer import Tokenizer
 COMPUTE_UNITS = {"all": "ALL", "cpu": "CPU_ONLY", "cpu_gpu": "CPU_AND_GPU", "cpu_ne": "CPU_AND_NE"}
 
 
+def _refuse_vegaml(vegaml):
+    """`vegaml=None`/`False` mean the ordinary checkpoint, as upstream; anything else asks for
+    vegaml's engine, which only official laya carries."""
+    if vegaml is not None and vegaml is not False:
+        raise ValueError(
+            "vegaml=%r loads vegaml's engine, which requires official laya; this distribution "
+            "uses Core ML" % (vegaml,)
+        )
+
+
 class Agent(RuntimeMixin):
     @property
     def config(self):
@@ -43,6 +53,7 @@ class Agent(RuntimeMixin):
         compile_warmup=True,
         compile_cache=False,
         compile_mode="default",
+        vegaml=None,
         *,
         compute_units="cpu_gpu",
         allow_unvalidated_gpu=False,
@@ -59,6 +70,7 @@ class Agent(RuntimeMixin):
             raise ValueError(
                 "This distribution uses Core ML; PyTorch/CUDA/ONNX backend options require official laya"
             )
+        _refuse_vegaml(vegaml)
         if device is not None:
             if device not in ("cpu", "mps"):
                 raise ValueError("Core ML device must be cpu or mps; use compute_units for ANE")
@@ -214,6 +226,7 @@ def load(
     compile_warmup=True,
     compile_cache=False,
     compile_mode="default",
+    vegaml=None,
     *,
     local_files_only=False,
     compute_units=None,
@@ -234,6 +247,7 @@ def load(
         raise ValueError(
             "This distribution uses Core ML; PyTorch/CUDA/ONNX backend options require official laya"
         )
+    _refuse_vegaml(vegaml)
     model_id_or_path = str(model_id_or_path)
     if subfolder is None and not _is_local_checkpoint_arg(model_id_or_path):
         spec = resolve_model_spec(model_id_or_path)

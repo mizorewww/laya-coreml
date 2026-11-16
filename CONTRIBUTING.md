@@ -5,14 +5,13 @@
 Official [Laya](https://github.com/NandhaKishorM/laya) behavior, defaults, validation, return
 structures and tests are the source of truth. Keep host changes traceable to upstream and limit
 adaptations to the Core ML tensor, artifact, device and resource boundaries. Document every
-material incompatibility in [docs/MIGRATION_0_4_17.md](docs/MIGRATION_0_4_17.md) (current) or
-[docs/MIGRATION_0_4.md](docs/MIGRATION_0_4.md) (carried forward). Keep explicit failures for
+material incompatibility in [docs/UPSTREAM.md](docs/UPSTREAM.md). Keep explicit failures for
 unsupported backends. Never change an expected value only to make a test pass.
 
 A bug that upstream still has may be fixed here (or ported from laya-mlx) if it is reproduced
 against the pinned upstream code, the fix keeps upstream's public API, new regression tests fail
-before and pass after, and the change is listed under "Deliberate divergences from upstream" in
-the current migration document.
+before and pass after, and the change is listed under "Deliberate divergences" in
+[docs/UPSTREAM.md](docs/UPSTREAM.md).
 [AGENTS.md](AGENTS.md) states the same policy for coding agents.
 
 ## Development setup
@@ -26,7 +25,7 @@ source .venv/bin/activate
 
 # Upstream reference used by parity and contract tests (the commit CI pins):
 gh repo clone NandhaKishorM/laya .upstream
-git -C .upstream checkout fe9a6c35023a7d94102e7feaaeaae8857d9d1b07
+git -C .upstream checkout 80a1da1fa5448ea12163f4d977935625a0aea670
 ```
 
 Model bundles are downloaded separately and are never committed.
@@ -36,13 +35,13 @@ Model bundles are downloaded separately and are never committed.
 ```bash
 ruff check . && ruff format --check .
 python scripts/audit_public_api.py --package laya_coreml   # must report 0 unclassified
-git diff --exit-code -- docs/UPSTREAM_0417_API_AUDIT.json  # audit must be committed
+git diff --exit-code -- docs/UPSTREAM_API_AUDIT.json  # audit must be committed
 python -X faulthandler -m pytest -q
 ```
 
 CI runs the same suite on Linux (portable tests; native conversion and inference are skipped) and
 macOS 26 (everything, including tiny-model Core ML conversion and runtime). Full-checkpoint
-validation runs locally on Apple hardware. [CI_TIMING.md](docs/CI_TIMING.md) explains the upstream
+validation runs locally on Apple hardware. [UPSTREAM.md](docs/UPSTREAM.md#idle-window-test-adaptation) explains the upstream
 idle-window test adaptation.
 
 ## Real bundles and benchmarks

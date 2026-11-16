@@ -250,7 +250,14 @@ They apply only when called.
 | `laya-coreml-evals` | — | Evaluation and reliability calibration |
 | `laya-coreml-snake` | `demo` | Terminal Snake demo ([guide](SNAKE_DEMO.md)) |
 
+`POST /v1/route` on the HTTP service returns the routing decision (`model`, `repo`, `reason`)
+without running a model; `"explain": true` adds the language diagnostic. The MCP `laya_route` and
+`laya_route_batch` tools take the same `explain` flag. The service logs one warning per request
+when a state was truncated.
+
 Framework integrations are the `langchain`, `langgraph`, `llamaindex`, `crewai` and `agno` extras.
+LangChain's `LayaRouter(decision_policy="native")` follows the `route` field of an answer (`auto`
+or `review`) instead of a confidence threshold, for backends that report one.
 `structured` adds Pydantic schemas for typed answers.
 
 ## Parallel option layout
@@ -264,9 +271,16 @@ reject parallel configurations; use the general `convert` path for those checkpo
 
 ## Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) v0.4.17
-(`fe9a6c35023a7d94102e7feaaeaae8857d9d1b07`); the 345-entry public API audit has no unclassified
-differences ([audit](UPSTREAM_0417_API_AUDIT.json)). Native artifact mapping, compute units,
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) v0.4.34
+(`80a1da1fa5448ea12163f4d977935625a0aea670`); the 351-entry public API audit has no unclassified
+differences ([audit](UPSTREAM_API_AUDIT.json)). Native artifact mapping, compute units,
 compiled execution and graph/shape caching are Core ML-specific. Encoder embeddings are explicitly
-unsupported. [MIGRATION_0_4_17.md](MIGRATION_0_4_17.md) has the full mapping and exclusions;
-[MIGRATION_0_4.md](MIGRATION_0_4.md) records incompatibilities carried from earlier migrations.
+unsupported.
+
+The vegaml engine is not included: `Agent(vegaml=True)` and `load(vegaml=True)` raise. A Router
+routes images, audio, video, states past `vega_over_tokens` and questions with fitted heads to a
+vega lane only when given a built agent, for example `Router(vega=laya.Agent(vegaml=True))` with
+official laya installed. Otherwise the lane is off.
+
+[UPSTREAM.md](UPSTREAM.md) has the Core ML boundaries, artifact mapping, everything that is not
+included, deliberate divergences and the file inventory.
