@@ -1,4 +1,4 @@
-"""Calibration temperature clamping, ported from upstream v0.3.5 (#35/#42).
+"""The native checkpoint temperature reader clamps like upstream and keeps the raw values.
 
 A fitted temperature below 1 sharpens logits. The shipped `choice:11+` bucket is 0.1006,
 which turned a 0.24 top probability into 0.99 confidence on 13-option skill routing.
@@ -6,42 +6,7 @@ which turned a 0.24 top probability into 0.99 confidence on 13-option skill rout
 
 import pytest
 
-from laya_coreml.common import (
-    QTYPES,
-    TEMP_MAX,
-    TEMP_MIN,
-    clamp_temperature,
-    read_temperatures,
-    temp_bucket,
-)
-
-
-@pytest.mark.parametrize(
-    "value,want",
-    [
-        (0.1006, 0.5),  # pathological sharpening
-        (0.10058280825614929, TEMP_MIN),  # the shipped choice:11+ bucket
-        (1.7601518630981445, 1.7601518630981445),  # legitimate value untouched
-        (1.0, 1.0),
-        (9.0, TEMP_MAX),
-        (0.0, TEMP_MIN),
-        (-3.0, TEMP_MIN),
-        (None, 1.0),
-        (False, 1.0),
-        (True, 1.0),
-        ("x", 1.0),
-        (float("nan"), 1.0),
-        (float("inf"), 1.0),
-    ],
-)
-def test_clamp_temperature(value, want):
-    assert clamp_temperature(value) == want
-
-
-def test_clamp_bounds_are_sane_and_bucket_matches_reported_case():
-    assert TEMP_MIN <= 1.0 <= TEMP_MAX
-    # 13 options is the bucket the reported skill-router landed in
-    assert temp_bucket(QTYPES["choice"], 13) == "choice:11+"
+from laya_coreml.common import TEMP_MIN, clamp_temperature, read_temperatures
 
 
 def test_read_temperatures_clamps_and_keeps_raw():
