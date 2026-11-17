@@ -90,6 +90,13 @@ validates the wheel and sdist, publishes to PyPI with the `PYPI_API_TOKEN` secre
 GitHub release. Any failure stops the release before publishing. Never put credentials in files,
 commits, logs or release notes.
 
+Upstream releases are ported and released without a maintainer. Renovate opens a PR on
+`renovate/upstream-laya` for each upstream tag, Claude Code ports it there following
+[.github/upstream-port.md](.github/upstream-port.md), and when every check passes and CI is green the
+PR is merged, tagged and released. Real-checkpoint validation and the wheel smoke test are not part
+of that path; run them afterwards. Issues and pull requests get an automated first reply and
+review, and `@claude` in a comment asks Claude Code for more.
+
 Publishing new model bundles to Hugging Face uses `scripts/prepare_hub.py` and
 `scripts/publish_adaptive_hub.py`; see [docs/RELEASE.md](docs/RELEASE.md) for the procedure and
 [docs/RELEASE_0_5_1.md](docs/RELEASE_0_5_1.md) for the latest publication receipts.

@@ -38,3 +38,7 @@ Before releasing, run lint, portable tests, macOS conversion/inference tests,
 build/Twine validation, a clean inference-only wheel smoke test, and the real
 model fixture/stability checks. Release only after CI passes. Never put credentials
 in files, commits, logs or release notes.
+
+Upstream ports are the exception: .github/upstream-port.md releases them
+automatically once CI passes, and the wheel smoke test and real-model checks run
+afterwards on Apple hardware.
