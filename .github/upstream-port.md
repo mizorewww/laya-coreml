@@ -89,9 +89,15 @@ around it.
 
 ## 6. Commit and report
 
-Commit on the current branch with a message in the existing style, for example
-`Port upstream v0.4.35 and prepare 0.7.1`, ending with
-`Co-Authored-By: Claude <noreply@anthropic.com>`. Push with `git push origin HEAD`.
+Commit on the current branch as the maintainer, with Claude as co-author, and a message in the
+existing style:
+
+```bash
+git commit --author "mizorewww <aac6fef@icloud.com>" \
+  --trailer "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" \
+  -m "Port upstream v0.4.35 and prepare 0.7.1" -m "<what changed and why>"
+git push origin HEAD
+```
 
 Do not tag, publish, edit release.yml or merge yourself. Then:
 
