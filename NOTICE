@@ -52,3 +52,7 @@ their native implementations.
 Host behavior synchronized with official Laya v0.4.34 at
 80a1da1fa5448ea12163f4d977935625a0aea670 (Apache-2.0). The vegaml engine, media
 readers and signed policies are not included. See docs/UPSTREAM.md for scope.
+
+Host behavior synchronized with official Laya v0.4.35 at
+b1d656952f0f9581ea691a70cb6f38abf3eb13a9 (Apache-2.0). That release changed
+only upstream's TypeScript SDK, packaging and tests; no host code changed.
