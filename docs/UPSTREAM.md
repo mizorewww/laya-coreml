@@ -1,7 +1,7 @@
 # Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.4.34**
-(`80a1da1fa5448ea12163f4d977935625a0aea670`). CI checks that commit out into `.upstream`, runs its
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.4.35**
+(`b1d656952f0f9581ea691a70cb6f38abf3eb13a9`). CI checks that commit out into `.upstream`, runs its
 unchanged host suites against this package on Linux and macOS, and audits the public API against
 it. This page is the current record; what each release changed is in the
 [changelog](../CHANGELOG.md). The policy for changes is in [AGENTS.md](../AGENTS.md).
@@ -78,46 +78,33 @@ upstream.
 
 ## Deliberate divergences
 
-These fix defects that upstream v0.4.34 still has, under the policy in [AGENTS.md](../AGENTS.md).
+These fix defects that upstream v0.4.35 still has, under the policy in [AGENTS.md](../AGENTS.md).
 Both were first fixed in laya-mlx ([#26](https://github.com/mizorewww/laya-mlx/pull/26)). Each
 keeps upstream's public API and is pinned by its own regression tests.
 
-| Behavior | Upstream v0.4.34 | Core ML | Tests |
+| Behavior | Upstream v0.4.35 | Core ML | Tests |
 |---|---|---|---|
 | `Router.predict_batch` grouping | Schemas serialized with `json.dumps`, so key `1` and `"1"` (or `True` and `"true"`) share a group and later requests receive the first request's key types | Grouping signature keeps Python key types and insertion order; equal schemas still share a batch | `tests/test_batch_key_types.py` |
 | Serial hook timeout (`hooks_concurrent=False`) | The caller releases the lock when a hook times out while the hook is still running, so later serial hooks can overlap it | The worker holds the lock until the hook exits; `hooks_timeout` includes the lock wait, and a hook whose deadline passes while waiting is never invoked | `tests/test_hook_serialization.py` |
 
 When an upstream release fixes one of these, adopt upstream's version and remove the row.
 
-## v0.4.17 → v0.4.34 file inventory
+## v0.4.34 → v0.4.35 file inventory
 
-`git diff v0.4.17 v0.4.34 -- laya` touches 27 files (2,779 additions, 185 deletions). Host files
-were merged three-way from upstream's diff; the port differs from upstream in the same places as
-before, plus the vega boundary in `router.py`. Model bundles are unchanged.
+`git diff v0.4.34 v0.4.35` touches 18 files (518 additions, 62 deletions). Nothing under `laya/`
+changed except the version string; the release adds HTTP routing snapshots to upstream's
+TypeScript SDK. Host code and model bundles are unchanged, so nothing was merged into
+`laya_coreml`.
 
 | Upstream file | Port | Scope |
 |---|---|---|
-| `laya/__init__.py` | — | Version bump and `VegaAgent` export; not ported. |
-| `laya/agent.py` | `runtime.py`, `agent.py` | `predict_batch` validates `batch_size` first. `vegaml` parameter accepted and refused. CUDA AMP and TileLang changes not applicable. |
-| `laya/calibrate.py` | `calibrate.py` | Vectorized record validation, threshold selection and binning fit; wide integers in `binning_map` values are a named `ValueError`. |
-| `laya/cli.py` | `router_cli.py` | `--image`, `--audio`, `--video` forward to `Router.predict`. |
-| `laya/common.py` | `common.py` | `check_batch_size`; `window_batch_cap` uses it; a temperature wider than a double falls back to 1.0 and is reported, including by the native `read_temperatures`. CPU fast paths not ported. |
-| `laya/confidence.py` | `confidence.py` | Wide integers are not confidences; Jev weights whose sum overflows are rescaled. |
-| `laya/evals.py`, `laya/evals_cli.py` | same | Datasets, reports and agreement runs saved with a BOM are read. |
-| `laya/hooks.py` | `hooks.py` | `OptionStabilityHook` drops a rename probe that renders the original question. |
-| `laya/integrations/_guard.py` | same | Non-finite and wide numeric guard values fall back or are refused. |
-| `laya/integrations/agno.py`, `crewai.py`, `llamaindex.py` | same | A decision naming an agent or choice outside the list is refused, not indexed. |
-| `laya/integrations/langchain.py` | same | Opt-in `decision_policy="native"` follows the answer's `route`; guardrail and triage read nested answers through the shared guard. |
-| `laya/integrations/tools.py` | same | `LayaToolSelector` resolves a per-bucket `min_confidence` map. |
-| `laya/lang.py` | `lang.py` | Lazy state traversal and a string fast path; results unchanged. |
-| `laya/mcp/remote.py` | same | Media arguments are refused in remote mode. |
-| `laya/mcp/server.py`, `laya/mcp/tools.py` | same | `explain` on `laya_route` and `laya_route_batch`; `laya_predict_long` refused in remote mode; unknown batch task is `invalid_task`; non-string question type is `invalid_questions`; `laya_tournament` reports router construction errors. |
-| `laya/onnx_agent.py` | — | ONNX duplicate of the `batch_size` check; not ported. |
-| `laya/policy.py`, `laya/vega.py`, `laya/video.py` | — | vegaml engine, media readers and signed policies; not ported. |
-| `laya/revisions.py` | `revisions.py` | A `LAYA_SHA256_DIGESTS` nested too deeply to parse is a `ValueError`. |
-| `laya/router.py` | `router.py` | Vega lane (see above); `on_route` dispatch skipped when no hook implements it; `route_batch` fast path; checkpoint source pairs validated at registration; legacy batch keyword fallbacks compose. |
-| `laya/serve.py` | `serve.py` | `POST /v1/route`; one warning per request when state tokens were dropped; media keys refused with 422; `LAYA_EXTRA_MODELS` source pairs validated at startup. |
-| `laya/structured.py` | `structured.py` | A non-array `anyOf`/`oneOf` is a `SchemaError`. |
+| `laya/__init__.py` | — | Version bump only. |
+| `tests/test_hooks_api.py` | Runs through the adapter | Two new checks that `RouteSnapshot` and `RouteOptions` stay outside the core exports; they pass unchanged. |
+| `tests/sdk_route_server_fixture.py` | — | Server fixture for the TypeScript SDK's integration tests; not a host suite. |
+| `sdk/typescript/**`, `docs/typescript-sdk.md`, `README.md`, `pyproject.toml`, `nix/package.nix` | — | TypeScript SDK, docs and packaging. |
+
+The v0.4.17 → v0.4.34 host merge is described in the 0.7.0 entry of the
+[changelog](../CHANGELOG.md).
 
 Changes to upstream's other SDKs, training and research tools, notebooks and deployment files are
 outside this package.
@@ -127,8 +114,8 @@ outside this package.
 `tests/test_official_contract.py` compares upstream host method ASTs, runs both implementations on
 identical inputs and deterministic logits, and runs 35 pinned upstream suites through
 `scripts/run_official_test.py`. The adapter rewrites the `laya` namespace and mock targets;
-assertions, expected values and public model names are upstream's. New for this pin are
-`router_vega`, `langchain_native_policy` and `mcp_diagnostics`.
+assertions, expected values and public model names are upstream's. v0.4.35 adds no suites; its
+two new `hooks_api` checks run unchanged.
 
 Excluded as backend-specific:
 
@@ -163,29 +150,30 @@ larger threshold or runtime change. `tests/test_idle_test_adapter.py` drives the
 fixture with a controlled clock: unloading at 100 or 199 ms must fail, at 201 ms or later must
 pass. The transformer fails if the fixture's expected markers disappear.
 
-## Validation for 0.7.0
+## Validation for 0.7.1
 
-Local, Apple M-series, on the release source:
+Automated port on a macOS runner (Apple silicon), on the release source:
 
 | Check | Result |
 |---|---|
-| `python -X faulthandler -m pytest -q` | 337 passed, 1 skipped, including 35 upstream suite wrappers and real conversion and inference of tiny models |
+| `python -u -X faulthandler -m pytest -q` | 339 passed, including 35 upstream suite wrappers and real conversion and inference of tiny models |
 | `scripts/audit_public_api.py --package laya_coreml` | 351 surface entries, 0 unclassified differences |
 | `ruff check .`, `ruff format --check .` | Passed |
-| `python -m benchmarks.validate` on the three published adaptive FP16 bundles, `reference-v0412-fp32.json` | 63/63 selected answers each, 100 stable calls; probability drift 0.0033 (English), 0.0016 (multilingual), 0.0027 (typed-decisions) |
 | `python -m build`, `twine check --strict` | Passed for wheel and sdist |
-| `scripts/wheel_smoke.py` from a clean inference-only environment | Passed offline for all three bundles, without PyTorch, Transformers or MLX installed |
 
-The golden fixture was generated from upstream v0.4.12; the checkpoint weights and exported graphs
-have not changed since. FP32, single-graph, ANE and Snake bundles were not re-run, and performance
-and energy were not re-measured. Remote CI runs the full suite on Linux and macOS 26.
+Not re-run for this release: real-bundle validation (`benchmarks.validate`,
+`benchmarks.release_validate`) and the clean inference-only wheel smoke test; they run on Apple
+hardware after the automated release. Model bundles and exported graphs are unchanged since 0.7.0,
+which re-checked the three published adaptive FP16 bundles against the golden fixture (63/63
+selected answers, 100 stable calls each). The golden fixture was generated from upstream v0.4.12.
+Performance and energy were not re-measured.
 
 ## Reproduce
 
 ```bash
 uv sync --extra convert --extra dev --extra reference --extra serve --extra mcp --extra structured
 git clone https://github.com/NandhaKishorM/laya .upstream
-git -C .upstream checkout 80a1da1fa5448ea12163f4d977935625a0aea670
+git -C .upstream checkout b1d656952f0f9581ea691a70cb6f38abf3eb13a9
 python scripts/audit_public_api.py --package laya_coreml
 python -X faulthandler -m pytest -q
 ```
