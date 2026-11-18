@@ -56,3 +56,8 @@ readers and signed policies are not included. See docs/UPSTREAM.md for scope.
 Host behavior synchronized with official Laya v0.4.35 at
 b1d656952f0f9581ea691a70cb6f38abf3eb13a9 (Apache-2.0). That release changed
 only upstream's TypeScript SDK, packaging and tests; no host code changed.
+
+Host behavior synchronized with official Laya v0.4.37 at
+d1282e791d71e92f24f816ff3836e4fd1c2ded4a (Apache-2.0). Releases v0.4.36 and
+v0.4.37 changed only upstream's README, version strings and packaging; no host
+code changed.

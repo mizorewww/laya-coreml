@@ -271,8 +271,8 @@ reject parallel configurations; use the general `convert` path for those checkpo
 
 ## Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) v0.4.35
-(`b1d656952f0f9581ea691a70cb6f38abf3eb13a9`); the 351-entry public API audit has no unclassified
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) v0.4.37
+(`d1282e791d71e92f24f816ff3836e4fd1c2ded4a`); the 351-entry public API audit has no unclassified
 differences ([audit](UPSTREAM_API_AUDIT.json)). Native artifact mapping, compute units,
 compiled execution and graph/shape caching are Core ML-specific. Encoder embeddings are explicitly
 unsupported.

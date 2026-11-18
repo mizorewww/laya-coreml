@@ -1,7 +1,7 @@
 # Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.4.35**
-(`b1d656952f0f9581ea691a70cb6f38abf3eb13a9`). CI checks that commit out into `.upstream`, runs its
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.4.37**
+(`d1282e791d71e92f24f816ff3836e4fd1c2ded4a`). CI checks that commit out into `.upstream`, runs its
 unchanged host suites against this package on Linux and macOS, and audits the public API against
 it. This page is the current record; what each release changed is in the
 [changelog](../CHANGELOG.md). The policy for changes is in [AGENTS.md](../AGENTS.md).
@@ -78,33 +78,33 @@ upstream.
 
 ## Deliberate divergences
 
-These fix defects that upstream v0.4.35 still has, under the policy in [AGENTS.md](../AGENTS.md).
+These fix defects that upstream v0.4.37 still has, under the policy in [AGENTS.md](../AGENTS.md).
 Both were first fixed in laya-mlx ([#26](https://github.com/mizorewww/laya-mlx/pull/26)). Each
 keeps upstream's public API and is pinned by its own regression tests.
 
-| Behavior | Upstream v0.4.35 | Core ML | Tests |
+| Behavior | Upstream v0.4.37 | Core ML | Tests |
 |---|---|---|---|
 | `Router.predict_batch` grouping | Schemas serialized with `json.dumps`, so key `1` and `"1"` (or `True` and `"true"`) share a group and later requests receive the first request's key types | Grouping signature keeps Python key types and insertion order; equal schemas still share a batch | `tests/test_batch_key_types.py` |
 | Serial hook timeout (`hooks_concurrent=False`) | The caller releases the lock when a hook times out while the hook is still running, so later serial hooks can overlap it | The worker holds the lock until the hook exits; `hooks_timeout` includes the lock wait, and a hook whose deadline passes while waiting is never invoked | `tests/test_hook_serialization.py` |
 
 When an upstream release fixes one of these, adopt upstream's version and remove the row.
 
-## v0.4.34 → v0.4.35 file inventory
+## v0.4.35 → v0.4.37 file inventory
 
-`git diff v0.4.34 v0.4.35` touches 18 files (518 additions, 62 deletions). Nothing under `laya/`
-changed except the version string; the release adds HTTP routing snapshots to upstream's
-TypeScript SDK. Host code and model bundles are unchanged, so nothing was merged into
-`laya_coreml`.
+`git diff v0.4.35 v0.4.37` (`b1d65695..d1282e79`, three commits across v0.4.36 and v0.4.37)
+touches 4 files (15 additions, 5 deletions). Nothing under `laya/` changed except the version
+string and nothing under `tests/` changed. Host code and model bundles are unchanged, so nothing
+was merged into `laya_coreml`.
 
 | Upstream file | Port | Scope |
 |---|---|---|
 | `laya/__init__.py` | — | Version bump only. |
-| `tests/test_hooks_api.py` | Runs through the adapter | Two new checks that `RouteSnapshot` and `RouteOptions` stay outside the core exports; they pass unchanged. |
-| `tests/sdk_route_server_fixture.py` | — | Server fixture for the TypeScript SDK's integration tests; not a host suite. |
-| `sdk/typescript/**`, `docs/typescript-sdk.md`, `README.md`, `pyproject.toml`, `nix/package.nix` | — | TypeScript SDK, docs and packaging. |
+| `README.md` | — | Upstream README now opens with Laya Studio and links to its pricing page. |
+| `pyproject.toml`, `nix/package.nix` | — | Version bumps. |
 
-The v0.4.17 → v0.4.34 host merge is described in the 0.7.0 entry of the
-[changelog](../CHANGELOG.md).
+The v0.4.34 → v0.4.35 release changed only upstream's TypeScript SDK and added two `hooks_api`
+export checks, which run unchanged. The v0.4.17 → v0.4.34 host merge is described in the 0.7.0
+entry of the [changelog](../CHANGELOG.md).
 
 Changes to upstream's other SDKs, training and research tools, notebooks and deployment files are
 outside this package.
@@ -114,8 +114,8 @@ outside this package.
 `tests/test_official_contract.py` compares upstream host method ASTs, runs both implementations on
 identical inputs and deterministic logits, and runs 35 pinned upstream suites through
 `scripts/run_official_test.py`. The adapter rewrites the `laya` namespace and mock targets;
-assertions, expected values and public model names are upstream's. v0.4.35 adds no suites; its
-two new `hooks_api` checks run unchanged.
+assertions, expected values and public model names are upstream's. v0.4.36 and v0.4.37 add no
+suites and change no upstream tests.
 
 Excluded as backend-specific:
 
@@ -150,7 +150,7 @@ larger threshold or runtime change. `tests/test_idle_test_adapter.py` drives the
 fixture with a controlled clock: unloading at 100 or 199 ms must fail, at 201 ms or later must
 pass. The transformer fails if the fixture's expected markers disappear.
 
-## Validation for 0.7.1
+## Validation for 0.7.2
 
 Automated port on a macOS runner (Apple silicon), on the release source:
 
@@ -173,7 +173,7 @@ Performance and energy were not re-measured.
 ```bash
 uv sync --extra convert --extra dev --extra reference --extra serve --extra mcp --extra structured
 git clone https://github.com/NandhaKishorM/laya .upstream
-git -C .upstream checkout b1d656952f0f9581ea691a70cb6f38abf3eb13a9
+git -C .upstream checkout d1282e791d71e92f24f816ff3836e4fd1c2ded4a
 python scripts/audit_public_api.py --package laya_coreml
 python -X faulthandler -m pytest -q
 ```
