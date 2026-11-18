@@ -3,6 +3,18 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## 0.7.2 — 2026-11-18
+
+Follows upstream **v0.4.37** (`d1282e79`). [Compatibility record](docs/UPSTREAM.md).
+Host behavior and model bundles are unchanged; no reconversion is needed.
+
+- Upstream v0.4.36 and v0.4.37 change only upstream's README, version strings and packaging. The
+  Python host code and tests are unchanged, so laya-coreml's behavior is the same as 0.7.1.
+- The pin, API audit and compatibility record now name v0.4.37. Both deliberate divergences remain,
+  since upstream still has those defects.
+- Validation: full test suite, API audit, lint and build checks on macOS. Real-bundle checks were
+  not re-run for this release.
+
 ## 0.7.1 — 2026-11-18
 
 Follows upstream **v0.4.35** (`b1d65695`). [Compatibility record](docs/UPSTREAM.md).
