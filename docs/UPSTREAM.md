@@ -1,7 +1,7 @@
 # Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.4.37**
-(`d1282e791d71e92f24f816ff3836e4fd1c2ded4a`). CI checks that commit out into `.upstream`, runs its
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.0**
+(`182a4eb85b15b92391c3f8be093a92b6db83a722`). CI checks that commit out into `.upstream`, runs its
 unchanged host suites against this package on Linux and macOS, and audits the public API against
 it. This page is the current record; what each release changed is in the
 [changelog](../CHANGELOG.md). The policy for changes is in [AGENTS.md](../AGENTS.md).
@@ -66,6 +66,8 @@ These exist upstream and are refused by name here rather than emulated:
 | PyTorch/CUDA/TileLang backends, `torch.compile` controls, ONNX (`onnx_path`, `ONNXAgent`, `--onnx` evaluation) | `ValueError` naming official laya |
 | Training and fine-tuning CLI | Not shipped |
 | vegaml engine: `Agent(vegaml=...)`, `load(vegaml=...)`, `VegaAgent`, `laya.vega`, `laya.video`, `laya.policy` | `vegaml=None`/`False` are accepted; any other value raises `ValueError`. `VegaAgent` is not exported and `vegaml`/`cryptography` are not dependencies |
+| vega as the default engine (0.5.0): `Agent()` / `load()` with no checkpoint named, through `_AgentMeta` | `wants_vega` is ported and returns `True` only for an explicit `vegaml=` value, which is refused. With no checkpoint named, `Agent()` and `load()` load the classic checkpoint, as upstream does when vegaml is not installed, without upstream's "vegaml is not installed" warning, whose install hint does not apply here |
+| `laya.Learner` and `laya.learn` (vegaml's continuous learner) | Not exported |
 | Router vega lane built by the Router (`Router(vega=True)`, a reader name, or `"auto"` with vegaml installed) | `"auto"` never turns the lane on. `vega=True` raises `ImportError`. A reader name routes like upstream but raises `ImportError` when loaded |
 | CPU sliding-window and packed-head fast paths in `DecisionModel`, `LAYA_CUDA_AMP` parsing | PyTorch execution details; exported graphs are unchanged |
 | `agno<4` | The extra still pins `agno<2`; newer Agno majors were not tested here |
@@ -78,30 +80,33 @@ upstream.
 
 ## Deliberate divergences
 
-These fix defects that upstream v0.4.37 still has, under the policy in [AGENTS.md](../AGENTS.md).
+These fix defects that upstream v0.5.0 still has, under the policy in [AGENTS.md](../AGENTS.md).
 Both were first fixed in laya-mlx ([#26](https://github.com/mizorewww/laya-mlx/pull/26)). Each
 keeps upstream's public API and is pinned by its own regression tests.
 
-| Behavior | Upstream v0.4.37 | Core ML | Tests |
+| Behavior | Upstream v0.5.0 | Core ML | Tests |
 |---|---|---|---|
 | `Router.predict_batch` grouping | Schemas serialized with `json.dumps`, so key `1` and `"1"` (or `True` and `"true"`) share a group and later requests receive the first request's key types | Grouping signature keeps Python key types and insertion order; equal schemas still share a batch | `tests/test_batch_key_types.py` |
 | Serial hook timeout (`hooks_concurrent=False`) | The caller releases the lock when a hook times out while the hook is still running, so later serial hooks can overlap it | The worker holds the lock until the hook exits; `hooks_timeout` includes the lock wait, and a hook whose deadline passes while waiting is never invoked | `tests/test_hook_serialization.py` |
 
 When an upstream release fixes one of these, adopt upstream's version and remove the row.
 
-## v0.4.35 → v0.4.37 file inventory
+## v0.4.37 → v0.5.0 file inventory
 
-`git diff v0.4.35 v0.4.37` (`b1d65695..d1282e79`, three commits across v0.4.36 and v0.4.37)
-touches 4 files (15 additions, 5 deletions). Nothing under `laya/` changed except the version
-string and nothing under `tests/` changed. Host code and model bundles are unchanged, so nothing
-was merged into `laya_coreml`.
+`git diff v0.4.37 v0.5.0` (`d1282e79..182a4eb8`, five commits across v0.4.38 and v0.5.0) touches
+10 files (283 additions, 24 deletions).
 
 | Upstream file | Port | Scope |
 |---|---|---|
-| `laya/__init__.py` | — | Version bump only. |
-| `README.md` | — | Upstream README now opens with Laya Studio and links to its pricing page. |
-| `pyproject.toml`, `nix/package.nix` | — | Version bumps. |
+| `laya/agent.py` | `laya_coreml/agent.py` | `wants_vega` and `load(model_id_or_path=None)` ported; `None` resolves to the classic default. `_AgentMeta` and `_CLASSIC_ONLY` only route to `VegaAgent` and are not ported (see "Not included"). |
+| `laya/learn.py` | — | vegaml's `Learner` re-export; classified as a vegaml module in the API audit. |
+| `laya/__init__.py` | — | Version bump; `Learner` export classified as vegaml-only. |
+| `tests/test_vega.py` | `tests/test_upstream_050.py` | The suite is vegaml-only and not run; its `wants_vega` expectations that hold without vegaml are checked natively. |
+| `tests/test_confidence.py` | — | Comment line numbers only; the suite runs unchanged. |
+| `README.md`, `docs/vegaml.md`, `docs/evals.md` | — | Upstream documentation for vega and continuous learning. |
+| `pyproject.toml`, `nix/package.nix` | — | Version bumps; `vegaml>=0.17.0`, which is not a dependency here. |
 
+The v0.4.35 → v0.4.37 releases changed only upstream's README, version strings and packaging.
 The v0.4.34 → v0.4.35 release changed only upstream's TypeScript SDK and added two `hooks_api`
 export checks, which run unchanged. The v0.4.17 → v0.4.34 host merge is described in the 0.7.0
 entry of the [changelog](../CHANGELOG.md).
@@ -114,8 +119,8 @@ outside this package.
 `tests/test_official_contract.py` compares upstream host method ASTs, runs both implementations on
 identical inputs and deterministic logits, and runs 35 pinned upstream suites through
 `scripts/run_official_test.py`. The adapter rewrites the `laya` namespace and mock targets;
-assertions, expected values and public model names are upstream's. v0.4.36 and v0.4.37 add no
-suites and change no upstream tests.
+assertions, expected values and public model names are upstream's. v0.5.0 adds no
+suites run here; its `test_vega.py` additions need vegaml.
 
 Excluded as backend-specific:
 
@@ -150,14 +155,14 @@ larger threshold or runtime change. `tests/test_idle_test_adapter.py` drives the
 fixture with a controlled clock: unloading at 100 or 199 ms must fail, at 201 ms or later must
 pass. The transformer fails if the fixture's expected markers disappear.
 
-## Validation for 0.7.2
+## Validation for 0.8.0
 
 Automated port on a macOS runner (Apple silicon), on the release source:
 
 | Check | Result |
 |---|---|
-| `python -u -X faulthandler -m pytest -q` | 339 passed, including 35 upstream suite wrappers and real conversion and inference of tiny models |
-| `scripts/audit_public_api.py --package laya_coreml` | 351 surface entries, 0 unclassified differences |
+| `python -u -X faulthandler -m pytest -q` | 346 passed, including 35 upstream suite wrappers, `tests/test_upstream_050.py` and real conversion and inference of tiny models |
+| `scripts/audit_public_api.py --package laya_coreml` | 353 surface entries, 0 unclassified differences |
 | `ruff check .`, `ruff format --check .` | Passed |
 | `python -m build`, `twine check --strict` | Passed for wheel and sdist |
 
@@ -173,7 +178,7 @@ Performance and energy were not re-measured.
 ```bash
 uv sync --extra convert --extra dev --extra reference --extra serve --extra mcp --extra structured
 git clone https://github.com/NandhaKishorM/laya .upstream
-git -C .upstream checkout d1282e791d71e92f24f816ff3836e4fd1c2ded4a
+git -C .upstream checkout 182a4eb85b15b92391c3f8be093a92b6db83a722
 python scripts/audit_public_api.py --package laya_coreml
 python -X faulthandler -m pytest -q
 ```

@@ -3,6 +3,23 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## 0.8.0 — 2026-11-19
+
+Follows upstream **v0.5.0** (`182a4eb8`). [Compatibility record](docs/UPSTREAM.md).
+Model bundles are unchanged; no reconversion is needed.
+
+- `load()` now takes `model_id_or_path=None` like upstream; with no checkpoint named it loads the
+  default `convaiinnovations/laya` artifact as before.
+- Upstream v0.5.0 makes vegaml's engine (vega) the default for `laya.Agent()` and `laya.load()`
+  when vegaml is installed. This distribution ships no vegaml engine, so both keep loading the
+  classic checkpoint, which is upstream's own fallback without vegaml. `wants_vega` is ported;
+  an explicit `vegaml=` value is still refused.
+- Upstream's new `laya.Learner` (vegaml's continuous learner) is not exported here.
+- The pin, API audit and compatibility record now name v0.5.0. Both deliberate divergences remain,
+  since upstream still has those defects.
+- Validation: full test suite, API audit, lint and build checks on macOS. Real-bundle checks were
+  not re-run for this release.
+
 ## 0.7.2 — 2026-11-18
 
 Follows upstream **v0.4.37** (`d1282e79`). [Compatibility record](docs/UPSTREAM.md).

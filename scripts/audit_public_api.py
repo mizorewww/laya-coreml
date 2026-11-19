@@ -11,7 +11,7 @@ import json
 import subprocess
 from pathlib import Path
 
-PIN = "d1282e791d71e92f24f816ff3836e4fd1c2ded4a"
+PIN = "182a4eb85b15b92391c3f8be093a92b6db83a722"
 BACKEND_MODULES = {
     "train.py",
     "train_cli.py",
@@ -23,8 +23,10 @@ BACKEND_MODULES = {
     "vega.py",
     "video.py",
     "policy.py",
+    # vegaml's continuous learner, re-exported by upstream as laya.Learner
+    "learn.py",
 }
-BACKEND_EXPORTS = {"VegaAgent"}
+BACKEND_EXPORTS = {"VegaAgent", "Learner"}
 BACKEND_CALLABLES = {
     "uses_parallel_layout",
     "parallel_option_masks",
