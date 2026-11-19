@@ -21,7 +21,7 @@
 
 The requested 10× improvement was not achieved; the reports explain where the limits are.
 
-## Upstream compatibility (current: v0.4.37)
+## Upstream compatibility (current: v0.5.0)
 
 | Document | Contents |
 |---|---|

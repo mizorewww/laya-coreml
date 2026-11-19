@@ -1,4 +1,4 @@
-"""Host prediction methods ported directly from official Laya v0.4.37.
+"""Host prediction methods ported directly from official Laya v0.5.0.
 
 Core ML adaptation is restricted to _forward's fixed exported shapes and resource cleanup.
 """

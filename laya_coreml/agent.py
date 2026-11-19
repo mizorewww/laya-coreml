@@ -25,6 +25,15 @@ def _refuse_vegaml(vegaml):
         )
 
 
+def wants_vega(args=(), kwargs=None) -> bool:
+    """Whether a `laya.Agent(...)` / `laya.load(...)` call asks for vega, as upstream decides it.
+    Official laya makes vega the default since 0.5.0 when vegaml is importable. This distribution
+    ships no vegaml engine, so the default is always the classic encoder (upstream's fallback when
+    vegaml is missing), and an explicit `vegaml=` value is refused by the loader."""
+    choice = (kwargs or {}).get("vegaml")
+    return choice is not None and choice is not False
+
+
 class Agent(RuntimeMixin):
     @property
     def config(self):
@@ -205,7 +214,7 @@ def _is_local_checkpoint_arg(model_id_or_path: str) -> bool:
 
 
 def load(
-    model_id_or_path=DEFAULT_MODEL,
+    model_id_or_path=None,
     device=None,
     token=None,
     subfolder=None,
@@ -248,6 +257,10 @@ def load(
             "This distribution uses Core ML; PyTorch/CUDA/ONNX backend options require official laya"
         )
     _refuse_vegaml(vegaml)
+    # Upstream 0.5.0 loads vega when no checkpoint is named; without vegaml's engine the default
+    # is the classic checkpoint, as upstream falls back when vegaml is not installed.
+    if model_id_or_path is None:
+        model_id_or_path = DEFAULT_MODEL
     model_id_or_path = str(model_id_or_path)
     if subfolder is None and not _is_local_checkpoint_arg(model_id_or_path):
         spec = resolve_model_spec(model_id_or_path)
