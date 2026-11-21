@@ -271,8 +271,8 @@ reject parallel configurations; use the general `convert` path for those checkpo
 
 ## Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) v0.5.1
-(`090c540ec4cd0e5c71d539d952f0250e97399fcb`); the 353-entry public API audit has no unclassified
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) v0.5.2
+(`e150aa92a0d4059ac621875b39b620847cf1b88a`); the 353-entry public API audit has no unclassified
 differences ([audit](UPSTREAM_API_AUDIT.json)). Native artifact mapping, compute units,
 compiled execution and graph/shape caching are Core ML-specific. Encoder embeddings are explicitly
 unsupported.
@@ -280,7 +280,7 @@ unsupported.
 The vegaml engine is not included: `Agent(vegaml=True)` and `load(vegaml=True)` raise. Upstream
 0.5.0 makes vega the default for `Agent()` and `load()` when vegaml is installed; here, as upstream
 does without vegaml, they load the classic checkpoint. vegaml's continuous learner (`laya.Learner`)
-is not exported. A Router
+and its teachers (`laya.Escalator`, `laya.vllm_teacher`) are not exported. A Router
 routes images, audio, video, states past `vega_over_tokens` and questions with fitted heads to a
 vega lane only when given a built agent, for example `Router(vega=laya.Agent(vegaml=True))` with
 official laya installed. Otherwise the lane is off.

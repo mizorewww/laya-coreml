@@ -3,6 +3,19 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## 0.9.1 — 2026-11-21
+
+Follows upstream **v0.5.2** (`e150aa92`). [Compatibility record](docs/UPSTREAM.md).
+Host behavior and model bundles are unchanged; no reconversion is needed.
+
+- Upstream v0.5.2 re-exports vegaml's teacher for the continuous learner as `laya.Escalator` and
+  a self-hosted teacher as `laya.vllm_teacher`. Like `laya.Learner`, both belong to the vegaml
+  engine, which is not shipped here, so neither is exported. No upstream host code changed.
+- Added `tests/test_upstream_052.py`; the pin, API audit and documentation move to v0.5.2. Both
+  deliberate divergences remain, since upstream still has those defects.
+- Validation: full test suite, API audit, lint and build checks on macOS. Real-bundle checks were
+  not re-run for this release.
+
 ## 0.9.0 — 2026-11-21
 
 Follows upstream **v0.5.1** (`090c540e`). [Compatibility record](docs/UPSTREAM.md).

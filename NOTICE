@@ -71,3 +71,8 @@ Host behavior synchronized with official Laya v0.5.1 at
 090c540ec4cd0e5c71d539d952f0250e97399fcb (Apache-2.0). That release hardens
 the vegaml policy manifest checks, which are not included here, and updates a
 uvicorn log-level note and test.
+
+Host behavior synchronized with official Laya v0.5.2 at
+e150aa92a0d4059ac621875b39b620847cf1b88a (Apache-2.0). That release re-exports
+vegaml's Escalator and vllm_teacher for the continuous learner; neither is
+included here, and no host code changed.

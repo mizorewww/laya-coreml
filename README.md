@@ -138,9 +138,9 @@ over three uncapped 600-step episodes with zero deaths.
 
 This is an independent port, not an official Convai Innovations or Apple release. Prompt
 formatting, calibration, routing, output schema and host APIs follow
-[NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.1**. Only the tensor, artifact,
+[NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.2**. Only the tensor, artifact,
 device and resource layers are Core ML-specific. Core ML bundles do not expose encoder embeddings;
-the vegaml engine (upstream's default since v0.5.0, and its `Learner`) and training stay
+the vegaml engine (upstream's default since v0.5.0, and its `Learner` and `Escalator`) and training stay
 upstream; `Agent()` and `load()` here load the classic checkpoint. A sibling port for MLX is
 [laya-mlx](https://github.com/mizorewww/laya-mlx).
 [Native boundaries](https://github.com/mizorewww/laya-coreml/blob/main/docs/USAGE.md#upstream-compatibility) ·
