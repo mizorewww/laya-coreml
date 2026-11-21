@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "laya-coreml"
-version = "0.8.0"
+version = "0.9.0"
 description = "Local Laya typed decisions on Apple Core ML and Neural Engine, with a live Snake demo"
 keywords = ["coreml", "neural-engine", "laya", "decision-model", "apple-silicon", "local-ai"]
 classifiers = [

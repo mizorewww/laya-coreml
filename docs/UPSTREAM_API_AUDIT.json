@@ -1,5 +1,5 @@
 {
-  "upstream_revision": "182a4eb85b15b92391c3f8be093a92b6db83a722",
+  "upstream_revision": "090c540ec4cd0e5c71d539d952f0250e97399fcb",
   "package": "laya_coreml",
   "scope": "public functions, explicitly defined public class methods, inherited Agent host methods and root __all__; annotations use native tensor types where needed",
   "rows": [

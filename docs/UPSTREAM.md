@@ -1,7 +1,7 @@
 # Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.0**
-(`182a4eb85b15b92391c3f8be093a92b6db83a722`). CI checks that commit out into `.upstream`, runs its
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.1**
+(`090c540ec4cd0e5c71d539d952f0250e97399fcb`). CI checks that commit out into `.upstream`, runs its
 unchanged host suites against this package on Linux and macOS, and audits the public API against
 it. This page is the current record; what each release changed is in the
 [changelog](../CHANGELOG.md). The policy for changes is in [AGENTS.md](../AGENTS.md).
@@ -68,6 +68,7 @@ These exist upstream and are refused by name here rather than emulated:
 | vegaml engine: `Agent(vegaml=...)`, `load(vegaml=...)`, `VegaAgent`, `laya.vega`, `laya.video`, `laya.policy` | `vegaml=None`/`False` are accepted; any other value raises `ValueError`. `VegaAgent` is not exported and `vegaml`/`cryptography` are not dependencies |
 | vega as the default engine (0.5.0): `Agent()` / `load()` with no checkpoint named, through `_AgentMeta` | `wants_vega` is ported and returns `True` only for an explicit `vegaml=` value, which is refused. With no checkpoint named, `Agent()` and `load()` load the classic checkpoint, as upstream does when vegaml is not installed, without upstream's "vegaml is not installed" warning, whose install hint does not apply here |
 | `laya.Learner` and `laya.learn` (vegaml's continuous learner) | Not exported |
+| `laya.policy` manifest hardening (0.5.1): `questions.json` must be hashed, `key_id` must be a string, deeply nested JSON and non-object provenance are refused | `laya.policy` is a vegaml module and is not shipped (see the vegaml row) |
 | Router vega lane built by the Router (`Router(vega=True)`, a reader name, or `"auto"` with vegaml installed) | `"auto"` never turns the lane on. `vega=True` raises `ImportError`. A reader name routes like upstream but raises `ImportError` when loaded |
 | CPU sliding-window and packed-head fast paths in `DecisionModel`, `LAYA_CUDA_AMP` parsing | PyTorch execution details; exported graphs are unchanged |
 | `agno<4` | The extra still pins `agno<2`; newer Agno majors were not tested here |
@@ -80,32 +81,34 @@ upstream.
 
 ## Deliberate divergences
 
-These fix defects that upstream v0.5.0 still has, under the policy in [AGENTS.md](../AGENTS.md).
+These fix defects that upstream v0.5.1 still has, under the policy in [AGENTS.md](../AGENTS.md).
 Both were first fixed in laya-mlx ([#26](https://github.com/mizorewww/laya-mlx/pull/26)). Each
 keeps upstream's public API and is pinned by its own regression tests.
 
-| Behavior | Upstream v0.5.0 | Core ML | Tests |
+| Behavior | Upstream v0.5.1 | Core ML | Tests |
 |---|---|---|---|
 | `Router.predict_batch` grouping | Schemas serialized with `json.dumps`, so key `1` and `"1"` (or `True` and `"true"`) share a group and later requests receive the first request's key types | Grouping signature keeps Python key types and insertion order; equal schemas still share a batch | `tests/test_batch_key_types.py` |
 | Serial hook timeout (`hooks_concurrent=False`) | The caller releases the lock when a hook times out while the hook is still running, so later serial hooks can overlap it | The worker holds the lock until the hook exits; `hooks_timeout` includes the lock wait, and a hook whose deadline passes while waiting is never invoked | `tests/test_hook_serialization.py` |
 
 When an upstream release fixes one of these, adopt upstream's version and remove the row.
 
-## v0.4.37 → v0.5.0 file inventory
+## v0.5.0 → v0.5.1 file inventory
 
-`git diff v0.4.37 v0.5.0` (`d1282e79..182a4eb8`, five commits across v0.4.38 and v0.5.0) touches
-10 files (283 additions, 24 deletions).
+`git diff v0.5.0 v0.5.1` (`182a4eb8..090c540e`, ten commits) touches 15 files (248 additions,
+60 deletions).
 
 | Upstream file | Port | Scope |
 |---|---|---|
-| `laya/agent.py` | `laya_coreml/agent.py` | `wants_vega` and `load(model_id_or_path=None)` ported; `None` resolves to the classic default. `_AgentMeta` and `_CLASSIC_ONLY` only route to `VegaAgent` and are not ported (see "Not included"). |
-| `laya/learn.py` | — | vegaml's `Learner` re-export; classified as a vegaml module in the API audit. |
-| `laya/__init__.py` | — | Version bump; `Learner` export classified as vegaml-only. |
-| `tests/test_vega.py` | `tests/test_upstream_050.py` | The suite is vegaml-only and not run; its `wants_vega` expectations that hold without vegaml are checked natively. |
-| `tests/test_confidence.py` | — | Comment line numbers only; the suite runs unchanged. |
-| `README.md`, `docs/vegaml.md`, `docs/evals.md` | — | Upstream documentation for vega and continuous learning. |
-| `pyproject.toml`, `nix/package.nix` | — | Version bumps; `vegaml>=0.17.0`, which is not a dependency here. |
+| `laya/serve.py` | `laya_coreml/serve.py` | `_resolve_log_level` docstring: uvicorn before 0.45 does not lowercase the name. The resolver already strips and lowercases, so behavior is unchanged; `tests/test_upstream_051.py` pins it. |
+| `tests/test_serve.py` | — | The uvicorn log-level witness now follows the installed uvicorn version; the suite runs unchanged. |
+| `laya/policy.py`, `tests/test_policy.py` | — | Manifest and provenance shape checks; vegaml-only, not shipped (see "Not included"). |
+| `laya/vega.py` | — | `VegaAgent` hashes `questions.json`; vegaml-only, not shipped. |
+| `laya/__init__.py`, `pyproject.toml`, `nix/package.nix` | — | Version bumps. |
+| `README.md`, `.github/FUNDING.yml`, `funding.json` | — | Upstream documentation and funding metadata. |
+| `laya-rust/*` | — | Upstream's Rust SDK (optional ONNX Runtime download). |
 
+The v0.4.37 → v0.5.0 release ported `wants_vega` and `load(model_id_or_path=None)`; see the 0.8.0
+entry of the [changelog](../CHANGELOG.md).
 The v0.4.35 → v0.4.37 releases changed only upstream's README, version strings and packaging.
 The v0.4.34 → v0.4.35 release changed only upstream's TypeScript SDK and added two `hooks_api`
 export checks, which run unchanged. The v0.4.17 → v0.4.34 host merge is described in the 0.7.0
@@ -119,8 +122,8 @@ outside this package.
 `tests/test_official_contract.py` compares upstream host method ASTs, runs both implementations on
 identical inputs and deterministic logits, and runs 35 pinned upstream suites through
 `scripts/run_official_test.py`. The adapter rewrites the `laya` namespace and mock targets;
-assertions, expected values and public model names are upstream's. v0.5.0 adds no
-suites run here; its `test_vega.py` additions need vegaml.
+assertions, expected values and public model names are upstream's. v0.5.1 adds no
+suites run here; its `test_policy.py` additions need vegaml.
 
 Excluded as backend-specific:
 
@@ -155,13 +158,13 @@ larger threshold or runtime change. `tests/test_idle_test_adapter.py` drives the
 fixture with a controlled clock: unloading at 100 or 199 ms must fail, at 201 ms or later must
 pass. The transformer fails if the fixture's expected markers disappear.
 
-## Validation for 0.8.0
+## Validation for 0.9.0
 
 Automated port on a macOS runner (Apple silicon), on the release source:
 
 | Check | Result |
 |---|---|
-| `python -u -X faulthandler -m pytest -q` | 346 passed, including 35 upstream suite wrappers, `tests/test_upstream_050.py` and real conversion and inference of tiny models |
+| `python -u -X faulthandler -m pytest -q` | 350 passed, including 35 upstream suite wrappers, `tests/test_upstream_051.py` and real conversion and inference of tiny models |
 | `scripts/audit_public_api.py --package laya_coreml` | 353 surface entries, 0 unclassified differences |
 | `ruff check .`, `ruff format --check .` | Passed |
 | `python -m build`, `twine check --strict` | Passed for wheel and sdist |
@@ -178,7 +181,7 @@ Performance and energy were not re-measured.
 ```bash
 uv sync --extra convert --extra dev --extra reference --extra serve --extra mcp --extra structured
 git clone https://github.com/NandhaKishorM/laya .upstream
-git -C .upstream checkout 182a4eb85b15b92391c3f8be093a92b6db83a722
+git -C .upstream checkout 090c540ec4cd0e5c71d539d952f0250e97399fcb
 python scripts/audit_public_api.py --package laya_coreml
 python -X faulthandler -m pytest -q
 ```
