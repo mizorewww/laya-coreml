@@ -25,7 +25,7 @@ source .venv/bin/activate
 
 # Upstream reference used by parity and contract tests (the commit CI pins):
 gh repo clone NandhaKishorM/laya .upstream
-git -C .upstream checkout 182a4eb85b15b92391c3f8be093a92b6db83a722
+git -C .upstream checkout 090c540ec4cd0e5c71d539d952f0250e97399fcb
 ```
 
 Model bundles are downloaded separately and are never committed.

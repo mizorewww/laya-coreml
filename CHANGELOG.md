@@ -3,6 +3,17 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## 0.9.0 — 2026-11-21
+
+Follows upstream **v0.5.1** (`090c540e`). [Compatibility record](docs/UPSTREAM.md).
+Model bundles are unchanged; no reconversion is needed.
+
+- `LAYA_LOG_LEVEL` handling is unchanged: names are still stripped and lowercased before they
+  reach uvicorn, which matters on uvicorn 0.27–0.44. The resolver's docstring follows upstream.
+- Upstream's `laya.policy` manifest hardening and `VegaAgent`'s `questions.json` hashing belong
+  to the vegaml engine, which is not shipped here.
+- Added `tests/test_upstream_051.py`; the pin, API audit and documentation move to v0.5.1.
+
 ## 0.8.0 — 2026-11-19
 
 Follows upstream **v0.5.0** (`182a4eb8`). [Compatibility record](docs/UPSTREAM.md).

@@ -66,3 +66,8 @@ Host behavior synchronized with official Laya v0.5.0 at
 182a4eb85b15b92391c3f8be093a92b6db83a722 (Apache-2.0). That release makes
 vegaml's engine the default and re-exports vegaml's continuous learner; neither
 is included, so the classic checkpoint stays the default here.
+
+Host behavior synchronized with official Laya v0.5.1 at
+090c540ec4cd0e5c71d539d952f0250e97399fcb (Apache-2.0). That release hardens
+the vegaml policy manifest checks, which are not included here, and updates a
+uvicorn log-level note and test.
