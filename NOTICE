@@ -76,3 +76,9 @@ Host behavior synchronized with official Laya v0.5.2 at
 e150aa92a0d4059ac621875b39b620847cf1b88a (Apache-2.0). That release re-exports
 vegaml's Escalator and vllm_teacher for the continuous learner; neither is
 included here, and no host code changed.
+
+Host behavior synchronized with official Laya v0.5.3 at
+abefd7d955008a59287b0fa8c5753cb323307693 (Apache-2.0). That release adds
+Spanish and Portuguese stopwords for short unaccented text, which are included
+here, and translates vegaml choice labels back to the caller's labels, which is
+not included.
