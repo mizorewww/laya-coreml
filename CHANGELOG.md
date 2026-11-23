@@ -3,6 +3,22 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## 0.10.0 — 2026-11-23
+
+Follows upstream **v0.5.3** (`abefd7d9`). [Compatibility record](docs/UPSTREAM.md).
+Model bundles are unchanged; no reconversion is needed.
+
+- Short Spanish and Portuguese messages written without accents (`no puedo entrar a mi cuenta`,
+  `como faco para reembolsar?`) are now detected as non-English and route to the multilingual
+  model, also when an English header shares the state. This ports upstream's added stopwords,
+  including the elided Italian `qual`; English controls such as "MIS report" still route english.
+- Upstream's translation of vegaml choice labels back to the caller's labels belongs to the vegaml
+  engine, which is not shipped here. Its ONNX export fixes are outside this package.
+- Added `tests/test_upstream_053.py`; the pin, API audit and documentation move to v0.5.3. Both
+  deliberate divergences remain, since upstream still has those defects.
+- Validation: full test suite, API audit, lint and build checks on macOS. Real-bundle checks were
+  not re-run for this release.
+
 ## 0.9.1 — 2026-11-21
 
 Follows upstream **v0.5.2** (`e150aa92`). [Compatibility record](docs/UPSTREAM.md).
