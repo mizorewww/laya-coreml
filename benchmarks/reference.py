@@ -15,7 +15,7 @@ from pathlib import Path
 
 from .cases import parity_cases
 
-UPSTREAM_REVISION = "60a6ce910b4a2edb2b77e00d8fddeb24349610c8"
+UPSTREAM_REVISION = "8f445c623453f7514f30fe958a73878296aea9af"
 
 
 def main():

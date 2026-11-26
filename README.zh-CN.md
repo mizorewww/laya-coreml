@@ -128,7 +128,7 @@ laya-coreml-snake --model ./models/snake
 ## 与上游的关系
 
 这是独立移植，不是 Convai Innovations 或 Apple 的官方发布。提示词格式、校准、路由、输出结构和主机侧 API
-跟随 [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.4**，只有张量、模型包、
+跟随 [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.5**，只有张量、模型包、
 设备和资源这几层是 Core ML 专有的。Core ML 模型包不提供编码器嵌入，vegaml 引擎（上游自 v0.5.0 起的默认引擎，以及 `Learner` 和 `Escalator`）和训练请使用上游项目；
 这里的 `Agent()` 和 `load()` 加载经典检查点。
 MLX 版本见姊妹项目 [laya-mlx](https://github.com/mizorewww/laya-mlx)。

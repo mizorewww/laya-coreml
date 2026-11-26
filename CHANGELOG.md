@@ -3,6 +3,18 @@
 Each release names the upstream [Laya](https://github.com/NandhaKishorM/laya) revision whose host
 behavior it follows. Detailed records live in [docs/](docs/README.md).
 
+## 0.10.2 — 2026-11-26
+
+Follows upstream **v0.5.5** (`8f445c62`). [Compatibility record](docs/UPSTREAM.md).
+Host behavior and model bundles are unchanged; no reconversion is needed.
+
+- Upstream v0.5.5 changes only its README (the paper citation moves to the top) and version
+  strings. No upstream host code or test changed, so nothing is ported.
+- The pin, API audit and documentation move to v0.5.5. Both deliberate divergences remain, since
+  upstream still has those defects.
+- Validation: full test suite, API audit, lint and build checks on macOS. Real-bundle checks were
+  not re-run for this release.
+
 ## 0.10.1 — 2026-11-25
 
 Follows upstream **v0.5.4** (`60a6ce91`). [Compatibility record](docs/UPSTREAM.md).

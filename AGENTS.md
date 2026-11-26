@@ -4,8 +4,8 @@ Align Core ML as completely as possible with official Laya. Official behavior,
 defaults, validation, return structures and tests are the source of truth. Do not
 redesign host semantics based on preference.
 
-Current baseline: NandhaKishorM/laya v0.5.4,
-60a6ce910b4a2edb2b77e00d8fddeb24349610c8. CI checks it out into .upstream.
+Current baseline: NandhaKishorM/laya v0.5.5,
+8f445c623453f7514f30fe958a73878296aea9af. CI checks it out into .upstream.
 
 Keep host changes traceable to upstream. Limit adaptations to the Core ML tensor,
 artifact, device and resource boundaries. Preserve explicit failures for unsupported
