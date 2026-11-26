@@ -87,3 +87,7 @@ Host behavior synchronized with official Laya v0.5.4 at
 60a6ce910b4a2edb2b77e00d8fddeb24349610c8 (Apache-2.0). That release moves the
 continuous learner (Learner, Escalator, vllm_teacher) to the separately
 licensed vegaml-learn package; none is included here, and no host code changed.
+
+Host behavior synchronized with official Laya v0.5.5 at
+8f445c623453f7514f30fe958a73878296aea9af (Apache-2.0). That release changes only
+upstream's README and version strings; no host code changed.

@@ -1,7 +1,7 @@
 # Upstream compatibility
 
-Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.4**
-(`60a6ce910b4a2edb2b77e00d8fddeb24349610c8`). CI checks that commit out into `.upstream`, runs its
+Host behavior follows [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) **v0.5.5**
+(`8f445c623453f7514f30fe958a73878296aea9af`). CI checks that commit out into `.upstream`, runs its
 unchanged host suites against this package on Linux and macOS, and audits the public API against
 it. This page is the current record; what each release changed is in the
 [changelog](../CHANGELOG.md). The policy for changes is in [AGENTS.md](../AGENTS.md).
@@ -81,29 +81,30 @@ upstream.
 
 ## Deliberate divergences
 
-These fix defects that upstream v0.5.4 still has, under the policy in [AGENTS.md](../AGENTS.md).
+These fix defects that upstream v0.5.5 still has, under the policy in [AGENTS.md](../AGENTS.md).
 Both were first fixed in laya-mlx ([#26](https://github.com/mizorewww/laya-mlx/pull/26)). Each
 keeps upstream's public API and is pinned by its own regression tests.
 
-| Behavior | Upstream v0.5.4 | Core ML | Tests |
+| Behavior | Upstream v0.5.5 | Core ML | Tests |
 |---|---|---|---|
 | `Router.predict_batch` grouping | Schemas serialized with `json.dumps`, so key `1` and `"1"` (or `True` and `"true"`) share a group and later requests receive the first request's key types | Grouping signature keeps Python key types and insertion order; equal schemas still share a batch | `tests/test_batch_key_types.py` |
 | Serial hook timeout (`hooks_concurrent=False`) | The caller releases the lock when a hook times out while the hook is still running, so later serial hooks can overlap it | The worker holds the lock until the hook exits; `hooks_timeout` includes the lock wait, and a hook whose deadline passes while waiting is never invoked | `tests/test_hook_serialization.py` |
 
 When an upstream release fixes one of these, adopt upstream's version and remove the row.
 
-## v0.5.3 → v0.5.4 file inventory
+## v0.5.4 → v0.5.5 file inventory
 
-`git diff v0.5.3 v0.5.4` (`abefd7d9..60a6ce91`, 3 commits) touches 8 files (162 additions,
-87 deletions).
+`git diff v0.5.4 v0.5.5` (`60a6ce91..8f445c62`, 4 commits) touches 4 files (45 additions,
+108 deletions). No host code or test changed.
 
 | Upstream file | Port | Scope |
 |---|---|---|
-| `laya/learn.py`, `tests/test_vega.py` | — | `Learner`, `Escalator` and `vllm_teacher` are now imported from the separately licensed `vegaml-learn` package (PolyForm Noncommercial), with one shared install message; vegaml-only, not shipped (see "Not included"). `tests/test_upstream_054.py` pins their absence. |
-| `laya/__init__.py`, `pyproject.toml`, `nix/package.nix` | — | Version bumps and a packaging comment; `vegaml-learn` is deliberately not a dependency upstream either. |
-| `README.md`, `docs/vegaml.md` | — | Upstream documentation. |
-| `laya-java/fixtures/lang_tables.json` | — | Java SDK fixture re-recorded for v0.5.3's stopwords. |
+| `README.md` | — | Upstream documentation: the paper citation moved to the top, duplicated sections and the top animation removed. |
+| `laya/__init__.py`, `pyproject.toml`, `nix/package.nix` | — | Version bumps to 0.5.5. |
 
+The v0.5.3 → v0.5.4 release moved `laya.Learner`, `laya.Escalator` and `laya.vllm_teacher` to the
+separately licensed `vegaml-learn` package; they are vegaml-only and not shipped, and
+`tests/test_upstream_054.py` pins their absence.
 The v0.5.2 → v0.5.3 release ported upstream's unaccented and closed-class Spanish and Portuguese
 stopwords and the elided Italian `qual` into `laya_coreml/lang.py`; `tests/test_upstream_053.py`
 compares the tables with the pinned checkout. Its vegaml label translation and ONNX changes are
@@ -127,7 +128,7 @@ outside this package.
 `tests/test_official_contract.py` compares upstream host method ASTs, runs both implementations on
 identical inputs and deterministic logits, and runs 35 pinned upstream suites through
 `scripts/run_official_test.py`. The adapter rewrites the `laya` namespace and mock targets;
-assertions, expected values and public model names are upstream's. v0.5.1 through v0.5.4 add no
+assertions, expected values and public model names are upstream's. v0.5.1 through v0.5.5 add no
 suites run here; v0.5.3's `test_router.py` cases run in the existing `router` suite, and the
 `test_policy.py`, `test_vega.py` (including v0.5.4's learner messages) and ONNX changes of these
 releases need vegaml or ONNX.
@@ -165,7 +166,7 @@ larger threshold or runtime change. `tests/test_idle_test_adapter.py` drives the
 fixture with a controlled clock: unloading at 100 or 199 ms must fail, at 201 ms or later must
 pass. The transformer fails if the fixture's expected markers disappear.
 
-## Validation for 0.10.1
+## Validation for 0.10.2
 
 Automated port on a macOS runner (Apple silicon), on the release source:
 
@@ -188,7 +189,7 @@ Performance and energy were not re-measured.
 ```bash
 uv sync --extra convert --extra dev --extra reference --extra serve --extra mcp --extra structured
 git clone https://github.com/NandhaKishorM/laya .upstream
-git -C .upstream checkout 60a6ce910b4a2edb2b77e00d8fddeb24349610c8
+git -C .upstream checkout 8f445c623453f7514f30fe958a73878296aea9af
 python scripts/audit_public_api.py --package laya_coreml
 python -X faulthandler -m pytest -q
 ```
